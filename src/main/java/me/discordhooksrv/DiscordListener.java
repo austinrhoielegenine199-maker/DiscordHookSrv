@@ -36,10 +36,6 @@ public class DiscordListener extends ListenerAdapter {
         }
     }
 
-    // =========================================================
-    // /link
-    // =========================================================
-
     private void handleLink(
             SlashCommandInteractionEvent event
     ) {
@@ -49,7 +45,9 @@ public class DiscordListener extends ListenerAdapter {
                 true
         )) {
 
-            event.reply("❌ Account linking is disabled.")
+            event.reply(
+                    "❌ Account linking is disabled."
+            )
                     .setEphemeral(true)
                     .queue();
 
@@ -62,8 +60,11 @@ public class DiscordListener extends ListenerAdapter {
         LinkManager linkManager =
                 plugin.getLinkManager();
 
-        // One Discord account = one Minecraft account
-        if (linkManager.getMinecraftUUID(discordId) != null) {
+        if (
+                linkManager.getMinecraftUUID(
+                        discordId
+                ) != null
+        ) {
 
             event.reply(
                     plugin.getConfig().getString(
@@ -78,7 +79,9 @@ public class DiscordListener extends ListenerAdapter {
         }
 
         String code =
-                linkManager.createCode(discordId);
+                linkManager.createCode(
+                        discordId
+                );
 
         if (code == null) {
 
@@ -108,10 +111,6 @@ public class DiscordListener extends ListenerAdapter {
                 .queue();
     }
 
-    // =========================================================
-    // /unlink
-    // =========================================================
-
     private void handleUnlink(
             SlashCommandInteractionEvent event
     ) {
@@ -138,7 +137,6 @@ public class DiscordListener extends ListenerAdapter {
             return;
         }
 
-        // Remove link permanently
         String removedDiscordId =
                 linkManager.unlink(
                         minecraftUUID
@@ -155,7 +153,6 @@ public class DiscordListener extends ListenerAdapter {
             return;
         }
 
-        // Remove verified role
         removeVerifiedRole(
                 event,
                 discordId
@@ -167,10 +164,6 @@ public class DiscordListener extends ListenerAdapter {
                 .setEphemeral(true)
                 .queue();
     }
-
-    // =========================================================
-    // REMOVE VERIFIED ROLE
-    // =========================================================
 
     private void removeVerifiedRole(
             SlashCommandInteractionEvent event,
@@ -186,8 +179,8 @@ public class DiscordListener extends ListenerAdapter {
         if (
                 roleId.isEmpty()
                         || roleId.equals(
-                                "PASTE_VERIFIED_ROLE_ID_HERE"
-                        )
+                        "PASTE_VERIFIED_ROLE_ID_HERE"
+                )
         ) {
 
             return;
@@ -223,10 +216,6 @@ public class DiscordListener extends ListenerAdapter {
                     .queue();
         }
     }
-
-    // =========================================================
-    // !IP AND !ONLINE
-    // =========================================================
 
     @Override
     public void onMessageReceived(
@@ -295,10 +284,6 @@ public class DiscordListener extends ListenerAdapter {
             );
         }
     }
-
-    // =========================================================
-    // EMBEDS
-    // =========================================================
 
     private void sendEmbed(
             MessageReceivedEvent event,
@@ -407,14 +392,24 @@ public class DiscordListener extends ListenerAdapter {
                     );
 
             boolean inline =
-                    Boolean.parseBoolean(
-                            String.valueOf(
-                                    field.getOrDefault(
-                                            "inline",
-                                            false
-                                    )
-                            )
+                    false;
+
+            Object inlineObject =
+                    field.get(
+                            "inline"
                     );
+
+            if (
+                    inlineObject != null
+            ) {
+
+                inline =
+                        Boolean.parseBoolean(
+                                String.valueOf(
+                                        inlineObject
+                                )
+                        );
+            }
 
             embed.addField(
                     name,
@@ -444,4 +439,4 @@ public class DiscordListener extends ListenerAdapter {
                 )
                 .queue();
     }
-            }
+    }
