@@ -13,17 +13,35 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.io.InputStream;
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 public class DiscordHookSRV extends JavaPlugin {
 
     private JDA jda;
     private LinkManager linkManager;
+
+    private static final String GITHUB_REPOSITORY =
+            "austinrhoielegenine199-maker/DiscordHookSrv";
 
     @Override
     public void onEnable() {
 
         saveDefaultConfig();
 
-        linkManager = new LinkManager(this);
+        linkManager =
+                new LinkManager(this);
+
+        checkForUpdates();
 
         if (!startDiscordBot()) {
 
@@ -31,11 +49,8 @@ public class DiscordHookSRV extends JavaPlugin {
                     "DiscordHookSRV failed to start!"
             );
 
-            getLogger().severe(
-                    "Disabling plugin..."
-            );
-
-            getServer().getPluginManager()
+            getServer()
+                    .getPluginManager()
                     .disablePlugin(this);
 
             return;
@@ -67,10 +82,6 @@ public class DiscordHookSRV extends JavaPlugin {
 
             getLogger().severe(
                     "Discord bot token is missing!"
-            );
-
-            getLogger().severe(
-                    "Please add a valid bot token to config.yml."
             );
 
             return false;
@@ -111,10 +122,6 @@ public class DiscordHookSRV extends JavaPlugin {
                     "Invalid Discord bot token or failed to connect!"
             );
 
-            getLogger().severe(
-                    "The plugin will be disabled."
-            );
-
             e.printStackTrace();
 
             return false;
@@ -129,12 +136,20 @@ public class DiscordHookSRV extends JavaPlugin {
 
         jda.updateCommands()
                 .addCommands(
+
                         Commands.slash(
                                 "link",
-                                "Link your Minecraft account to Discord"
+                                "Generate a Minecraft linking code"
+                        ),
+
+                        Commands.slash(
+                                "unlink",
+                                "Unlink your Minecraft account"
                         )
+
                 )
                 .queue(
+
                         success ->
                                 getLogger().info(
                                         "Discord slash commands registered."
@@ -176,11 +191,6 @@ public class DiscordHookSRV extends JavaPlugin {
                 sender.sendMessage(
                         ChatColor.GREEN
                                 + "DiscordHookSRV configuration reloaded!"
-                );
-
-                getLogger().info(
-                        "Configuration reloaded by "
-                                + sender.getName()
                 );
 
                 return true;
@@ -244,7 +254,9 @@ public class DiscordHookSRV extends JavaPlugin {
                             code
                     );
 
-            if (discordId == null) {
+            if (
+                    discordId == null
+            ) {
 
                 player.sendMessage(
                         ChatColor.RED
@@ -302,16 +314,349 @@ public class DiscordHookSRV extends JavaPlugin {
         return false;
     }
 
+    private void checkForUpdates() {
+
+        if (
+                !getConfig().getBoolean(
+                        "updater.enabled",
+                        true
+                )
+        ) {
+
+            return;
+        }
+
+        Bukkit.getScheduler()
+                .runTaskAsynchronously(
+                        this,
+                        () -> {
+
+                            try {
+
+                                String apiUrl =
+                                        "https://api.github.com/repos/"
+                                                + GITHUB_REPOSITORY
+                                                + "/releases/latest";
+
+                                HttpClient client =
+                                        HttpClient.newHttpClient();
+
+                                HttpRequest request =
+                                        HttpRequest.newBuilder()
+                                                .uri(
+                                                        URI.create(
+                                                                apiUrl
+                                                        )
+                                                )
+                                                .header(
+                                                        "User-Agent",
+                                                        "DiscordHookSRV-Updater"
+                                                )
+                                                .GET()
+                                                .build();
+
+                                HttpResponse<String> response =
+                                        client.send(
+                                                request,
+                                                HttpResponse.BodyHandlers.ofString()
+                                        );
+
+                                if (
+                                        response.statusCode()
+                                                != 200
+                                ) {
+
+                                    getLogger().warning(
+                                            "Could not check for updates. HTTP "
+                                                    + response.statusCode()
+                                    );
+
+                                    return;
+                                }
+
+                                String json =
+                                        response.body();
+
+                                String latestVersion =
+                                        extractJsonValue(
+                                                json,
+                                                "tag_name"
+                                        );
+
+                                String downloadUrl =
+                                        extractJarDownloadUrl(
+                                                json
+                                        );
+
+                                if (
+                                        latestVersion == null
+                                                || downloadUrl == null
+                                ) {
+
+                                    return;
+                                }
+
+                                latestVersion =
+                                        latestVersion.replace(
+                                                "v",
+                                                ""
+                                        );
+
+                                String currentVersion =
+                                        getDescription()
+                                                .getVersion();
+
+                                if (
+                                        isNewerVersion(
+                                                latestVersion,
+                                                currentVersion
+                                        )
+                                ) {
+
+                                    downloadUpdate(
+                                            downloadUrl,
+                                            latestVersion
+                                    );
+
+                                } else {
+
+                                    getLogger().info(
+                                            "DiscordHookSRV is up to date."
+                                    );
+                                }
+
+                            } catch (
+                                    Exception e
+                            ) {
+
+                                getLogger().warning(
+                                        "Auto-updater failed: "
+                                                + e.getMessage()
+                                );
+                            }
+                        }
+                );
+    }
+
+    private String extractJsonValue(
+            String json,
+            String key
+    ) {
+
+        Pattern pattern =
+                Pattern.compile(
+                        "\""
+                                + key
+                                + "\"\\s*:\\s*\"([^\"]+)\""
+                );
+
+        Matcher matcher =
+                pattern.matcher(
+                        json
+                );
+
+        if (
+                matcher.find()
+        ) {
+
+            return matcher.group(
+                    1
+            );
+        }
+
+        return null;
+    }
+
+    private String extractJarDownloadUrl(
+            String json
+    ) {
+
+        Pattern pattern =
+                Pattern.compile(
+                        "\"browser_download_url\"\\s*:\\s*\"([^\"]+\\.jar)\""
+                );
+
+        Matcher matcher =
+                pattern.matcher(
+                        json
+                );
+
+        if (
+                matcher.find()
+        ) {
+
+            return matcher.group(
+                    1
+            );
+        }
+
+        return null;
+    }
+
+    private boolean isNewerVersion(
+            String latest,
+            String current
+    ) {
+
+        try {
+
+            String[] latestParts =
+                    latest.split(
+                            "\\."
+                    );
+
+            String[] currentParts =
+                    current.split(
+                            "\\."
+                    );
+
+            int length =
+                    Math.max(
+                            latestParts.length,
+                            currentParts.length
+                    );
+
+            for (
+                    int i = 0;
+                    i < length;
+                    i++
+            ) {
+
+                int latestNumber =
+                        i < latestParts.length
+                                ? Integer.parseInt(
+                                latestParts[i]
+                        )
+                                : 0;
+
+                int currentNumber =
+                        i < currentParts.length
+                                ? Integer.parseInt(
+                                currentParts[i]
+                        )
+                                : 0;
+
+                if (
+                        latestNumber
+                                > currentNumber
+                ) {
+
+                    return true;
+                }
+
+                if (
+                        latestNumber
+                                < currentNumber
+                ) {
+
+                    return false;
+                }
+            }
+
+        } catch (
+                Exception ignored
+        ) {
+
+            return false;
+        }
+
+        return false;
+    }
+
+    private void downloadUpdate(
+            String downloadUrl,
+            String version
+    ) {
+
+        try {
+
+            Path updateFolder =
+                    getServer()
+                            .getUpdateFolderFile()
+                            .toPath();
+
+            Files.createDirectories(
+                    updateFolder
+            );
+
+            Path updateFile =
+                    updateFolder.resolve(
+                            "DiscordHookSrv.jar"
+                    );
+
+            HttpClient client =
+                    HttpClient.newHttpClient();
+
+            HttpRequest request =
+                    HttpRequest.newBuilder()
+                            .uri(
+                                    URI.create(
+                                            downloadUrl
+                                    )
+                            )
+                            .header(
+                                    "User-Agent",
+                                    "DiscordHookSRV-Updater"
+                            )
+                            .GET()
+                            .build();
+
+            HttpResponse<InputStream> response =
+                    client.send(
+                            request,
+                            HttpResponse.BodyHandlers.ofInputStream()
+                    );
+
+            if (
+                    response.statusCode()
+                            != 200
+            ) {
+
+                return;
+            }
+
+            try (
+                    InputStream input =
+                            response.body()
+            ) {
+
+                Files.copy(
+                        input,
+                        updateFile,
+                        StandardCopyOption.REPLACE_EXISTING
+                );
+            }
+
+            getLogger().info(
+                    "DiscordHookSRV "
+                            + version
+                            + " downloaded."
+            );
+
+            getLogger().info(
+                    "The update will install on the next restart."
+            );
+
+        } catch (
+                IOException
+                        | InterruptedException e
+        ) {
+
+            getLogger().warning(
+                    "Failed to download update: "
+                            + e.getMessage()
+            );
+        }
+    }
+
     @Override
     public void onDisable() {
 
-        if (jda != null) {
+        if (
+                jda != null
+        ) {
 
             jda.shutdown();
-
-            getLogger().info(
-                    "Discord bot has been shut down."
-            );
         }
 
         getLogger().info(
@@ -320,10 +665,12 @@ public class DiscordHookSRV extends JavaPlugin {
     }
 
     public JDA getJDA() {
+
         return jda;
     }
 
     public LinkManager getLinkManager() {
+
         return linkManager;
     }
 
@@ -331,7 +678,10 @@ public class DiscordHookSRV extends JavaPlugin {
             String text
     ) {
 
-        if (text == null) {
+        if (
+                text == null
+        ) {
+
             return "";
         }
 
@@ -376,4 +726,4 @@ public class DiscordHookSRV extends JavaPlugin {
                         text
                 );
     }
-                        }
+                }
