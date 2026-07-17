@@ -91,18 +91,14 @@ public class LinkManager {
             UUID uuid
     ) {
 
-        return minecraftLinks.containsKey(
-                uuid
-        );
+        return minecraftLinks.containsKey(uuid);
     }
 
     public boolean hasDiscordLink(
             String discordId
     ) {
 
-        return discordLinks.containsKey(
-                discordId
-        );
+        return discordLinks.containsKey(discordId);
     }
 
     public void link(
@@ -121,13 +117,30 @@ public class LinkManager {
         );
     }
 
-    public void removeCode(
-            String code
+    public void unlinkMinecraft(
+            UUID minecraftUUID
     ) {
 
-        codes.remove(code);
+        String discordId =
+                minecraftLinks.remove(
+                        minecraftUUID
+                );
 
-        codeExpiry.remove(code);
+        if (discordId != null) {
+
+            discordLinks.remove(
+                    discordId
+            );
+        }
+    }
+
+    public UUID getMinecraftUUID(
+            String discordId
+    ) {
+
+        return discordLinks.get(
+                discordId
+        );
     }
 
     public String getDiscordId(
@@ -139,12 +152,12 @@ public class LinkManager {
         );
     }
 
-    public UUID getMinecraftUUID(
-            String discordId
+    public void removeCode(
+            String code
     ) {
 
-        return discordLinks.get(
-                discordId
-        );
+        codes.remove(code);
+
+        codeExpiry.remove(code);
     }
 }
