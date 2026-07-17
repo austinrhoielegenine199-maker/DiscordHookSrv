@@ -9,16 +9,22 @@ import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
+
+import java.util.UUID;
 
 public class DiscordHookSRV extends JavaPlugin {
 
     private JDA jda;
+    private LinkManager linkManager;
 
     @Override
     public void onEnable() {
 
         saveDefaultConfig();
+
+        linkManager = new LinkManager(this);
 
         if (!startDiscordBot()) {
 
@@ -158,6 +164,104 @@ public class DiscordHookSRV extends JavaPlugin {
             return true;
         }
 
+        if (
+                command.getName()
+                        .equalsIgnoreCase(
+                                "link"
+                        )
+        ) {
+
+            if (!(sender instanceof Player player)) {
+
+                sender.sendMessage(
+                        ChatColor.RED
+                                + "Only players can use this command."
+                );
+
+                return true;
+            }
+
+            if (!getConfig().getBoolean(
+                    "linking.enabled",
+                    true
+            )) {
+
+                player.sendMessage(
+                        ChatColor.RED
+                                + "Account linking is disabled."
+                );
+
+                return true;
+            }
+
+            if (args.length != 1) {
+
+                player.sendMessage(
+                        ChatColor.YELLOW
+                                + "Usage: /link <code>"
+                );
+
+                return true;
+            }
+
+            String code = args[0];
+
+            String discordId =
+                    linkManager.getDiscordIdFromCode(code);
+
+            if (discordId == null) {
+
+                player.sendMessage(
+                        ChatColor.RED
+                                + "That linking code is invalid or expired."
+                );
+
+                return true;
+            }
+
+            if (
+                    linkManager.hasMinecraftLink(
+                            player.getUniqueId()
+                    )
+            ) {
+
+                player.sendMessage(
+                        ChatColor.RED
+                                + "Your Minecraft account is already linked."
+                );
+
+                return true;
+            }
+
+            if (
+                    linkManager.hasDiscordLink(
+                            discordId
+                    )
+            ) {
+
+                player.sendMessage(
+                        ChatColor.RED
+                                + "That Discord account is already linked."
+                );
+
+                return true;
+            }
+
+            linkManager.link(
+                    player.getUniqueId(),
+                    discordId
+            );
+
+            linkManager.removeCode(code);
+
+            player.sendMessage(
+                    ChatColor.GREEN
+                            + "✓ Your Minecraft account has been linked to Discord!"
+            );
+
+            return true;
+        }
+
         return false;
     }
 
@@ -180,6 +284,10 @@ public class DiscordHookSRV extends JavaPlugin {
 
     public JDA getJDA() {
         return jda;
+    }
+
+    public LinkManager getLinkManager() {
+        return linkManager;
     }
 
     public String replacePlaceholders(
@@ -222,4 +330,4 @@ public class DiscordHookSRV extends JavaPlugin {
                         text
                 );
     }
-}
+                    }
