@@ -5,6 +5,7 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
@@ -18,12 +19,6 @@ public class LinkManager {
     private final YamlConfiguration data;
 
     private final Map<String, String> codes =
-            new HashMap<>();
-
-    private final Map<String, Integer> attempts =
-            new HashMap<>();
-
-    private final Map<String, Long> lockedUntil =
             new HashMap<>();
 
     public LinkManager(
@@ -64,12 +59,51 @@ public class LinkManager {
                                 file
                         );
 
+        loadCodes();
+
         cleanupExpiredCodes();
     }
 
-    // =========================================================
-    // CREATE CODE
-    // =========================================================
+    private void loadCodes() {
+
+        if (
+                data.getConfigurationSection(
+                        "codes"
+                )
+                        == null
+        ) {
+
+            return;
+        }
+
+        for (
+                String code
+                : data.getConfigurationSection(
+                        "codes"
+                )
+                .getKeys(
+                        false
+                )
+        ) {
+
+            String discordId =
+                    data.getString(
+                            "codes."
+                                    + code
+                                    + ".discord"
+                    );
+
+            if (
+                    discordId != null
+            ) {
+
+                codes.put(
+                        code,
+                        discordId
+                );
+            }
+        }
+    }
 
     public String createCode(
             String discordId
@@ -130,34 +164,16 @@ public class LinkManager {
         return code;
     }
 
-    // =========================================================
-    // GET DISCORD ID FROM CODE
-    // =========================================================
-
     public String getDiscordIdFromCode(
             String code
     ) {
 
         cleanupExpiredCodes();
 
-        if (
-                code == null
-                        || !codes.containsKey(
-                        code
-                )
-        ) {
-
-            return null;
-        }
-
         return codes.get(
                 code
         );
     }
-
-    // =========================================================
-    // CHECK MC LINK
-    // =========================================================
 
     public boolean hasMinecraftLink(
             UUID minecraftUUID
@@ -170,31 +186,34 @@ public class LinkManager {
         );
     }
 
-    // =========================================================
-    // CHECK DISCORD LINK
-    // =========================================================
-
     public boolean hasDiscordLink(
             String discordId
     ) {
 
+        if (
+                data.getConfigurationSection(
+                        "links"
+                )
+                        == null
+        ) {
+
+            return false;
+        }
+
         for (
-                String key
+                String uuid
                 : data.getConfigurationSection(
                         "links"
-                ) == null
-                        ? new java.util.HashSet<>()
-                        : data.getConfigurationSection(
-                                "links"
-                        ).getKeys(
-                                false
-                        )
+                )
+                .getKeys(
+                        false
+                )
         ) {
 
             String linkedDiscord =
                     data.getString(
                             "links."
-                                    + key
+                                    + uuid
                                     + ".discord"
                     );
 
@@ -211,9 +230,60 @@ public class LinkManager {
         return false;
     }
 
-    // =========================================================
-    // LINK
-    // =========================================================
+    public UUID getMinecraftUUID(
+            String discordId
+    ) {
+
+        if (
+                data.getConfigurationSection(
+                        "links"
+                )
+                        == null
+        ) {
+
+            return null;
+        }
+
+        for (
+                String uuidString
+                : data.getConfigurationSection(
+                        "links"
+                )
+                .getKeys(
+                        false
+                )
+        ) {
+
+            String linkedDiscord =
+                    data.getString(
+                            "links."
+                                    + uuidString
+                                    + ".discord"
+                    );
+
+            if (
+                    discordId.equals(
+                            linkedDiscord
+                    )
+            ) {
+
+                try {
+
+                    return UUID.fromString(
+                            uuidString
+                    );
+
+                } catch (
+                        IllegalArgumentException ignored
+                ) {
+
+                    return null;
+                }
+            }
+        }
+
+        return null;
+    }
 
     public void link(
             UUID minecraftUUID,
@@ -237,9 +307,18 @@ public class LinkManager {
         save();
     }
 
-    // =========================================================
-    // REMOVE CODE
-    // =========================================================
+    public void unlink(
+            UUID minecraftUUID
+    ) {
+
+        data.set(
+                "links."
+                        + minecraftUUID,
+                null
+        );
+
+        save();
+    }
 
     public void removeCode(
             String code
@@ -255,20 +334,8 @@ public class LinkManager {
                 null
         );
 
-        attempts.remove(
-                code
-        );
-
-        lockedUntil.remove(
-                code
-        );
-
         save();
     }
-
-    // =========================================================
-    // CLEANUP EXPIRED CODES
-    // =========================================================
 
     private void cleanupExpiredCodes() {
 
@@ -278,31 +345,22 @@ public class LinkManager {
                                 "linking.code-expire-seconds",
                                 300
                         )
-                                * 1000L;
+                        * 1000L;
 
         long now =
                 System.currentTimeMillis();
 
-        java.util.Iterator<
+        HashSet<String> expired =
+                new HashSet<>();
+
+        for (
                 Map.Entry<
                         String,
                         String
                         >
-                >
-                iterator =
-                codes.entrySet()
-                        .iterator();
-
-        while (
-                iterator.hasNext()
+                        entry
+                : codes.entrySet()
         ) {
-
-            Map.Entry<
-                    String,
-                    String
-                    >
-                    entry =
-                    iterator.next();
 
             long created =
                     data.getLong(
@@ -316,22 +374,35 @@ public class LinkManager {
                             >= expiry
             ) {
 
-                data.set(
-                        "codes."
-                                + entry.getKey(),
-                        null
+                expired.add(
+                        entry.getKey()
                 );
-
-                iterator.remove();
             }
         }
 
-        save();
-    }
+        for (
+                String code
+                : expired
+        ) {
 
-    // =========================================================
-    // SAVE
-    // =========================================================
+            codes.remove(
+                    code
+            );
+
+            data.set(
+                    "codes."
+                            + code,
+                    null
+            );
+        }
+
+        if (
+                !expired.isEmpty()
+        ) {
+
+            save();
+        }
+    }
 
     private void save() {
 
@@ -348,4 +419,4 @@ public class LinkManager {
             e.printStackTrace();
         }
     }
-}
+                }
