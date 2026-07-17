@@ -11,15 +11,13 @@ import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import java.awt.Color;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 public class DiscordListener extends ListenerAdapter {
 
     private final DiscordHookSRV plugin;
 
-    public DiscordListener(
-            DiscordHookSRV plugin
-    ) {
-
+    public DiscordListener(DiscordHookSRV plugin) {
         this.plugin = plugin;
     }
 
@@ -28,199 +26,207 @@ public class DiscordListener extends ListenerAdapter {
             SlashCommandInteractionEvent event
     ) {
 
-        if (
-                event.getName()
-                        .equalsIgnoreCase(
-                                "link"
-                        )
-        ) {
-
-            handleLink(
-                    event
-            );
-
+        if (event.getName().equalsIgnoreCase("link")) {
+            handleLink(event);
             return;
         }
 
-        if (
-                event.getName()
-                        .equalsIgnoreCase(
-                                "unlink"
-                        )
-        ) {
-
-            handleUnlink(
-                    event
-            );
+        if (event.getName().equalsIgnoreCase("unlink")) {
+            handleUnlink(event);
         }
     }
+
+    // =========================================================
+    // /link
+    // =========================================================
 
     private void handleLink(
             SlashCommandInteractionEvent event
     ) {
 
-        if (
-                !plugin.getConfig()
-                        .getBoolean(
-                                "linking.enabled",
-                                true
-                        )
-        ) {
+        if (!plugin.getConfig().getBoolean(
+                "linking.enabled",
+                true
+        )) {
 
-            event.reply(
-                    "❌ Account linking is disabled."
-            )
-                    .setEphemeral(
-                            true
-                    )
+            event.reply("❌ Account linking is disabled.")
+                    .setEphemeral(true)
                     .queue();
 
             return;
         }
 
         String discordId =
-                event.getUser()
-                        .getId();
+                event.getUser().getId();
 
-        if (
-                plugin.getLinkManager()
-                        .hasDiscordLink(
-                                discordId
-                        )
-        ) {
+        LinkManager linkManager =
+                plugin.getLinkManager();
+
+        // One Discord account = one Minecraft account
+        if (linkManager.getMinecraftUUID(discordId) != null) {
 
             event.reply(
-                    plugin.getConfig()
-                            .getString(
-                                    "linking.messages.discord-already-linked",
-                                    "❌ Your Discord account is already linked."
-                            )
-            )
-                    .setEphemeral(
-                            true
+                    plugin.getConfig().getString(
+                            "linking.messages.discord-already-linked",
+                            "❌ Your Discord account is already linked."
                     )
+            )
+                    .setEphemeral(true)
                     .queue();
 
             return;
         }
 
         String code =
-                plugin.getLinkManager()
-                        .createCode(
-                                discordId
-                        );
+                linkManager.createCode(discordId);
+
+        if (code == null) {
+
+            event.reply(
+                    "❌ Your Discord account is already linked."
+            )
+                    .setEphemeral(true)
+                    .queue();
+
+            return;
+        }
 
         String message =
-                plugin.getConfig()
-                        .getString(
-                                "linking.messages.discord-code",
-                                "Your code is `%code%`. Type `/link %code%` in Minecraft."
-                        )
-                        .replace(
-                                "%code%",
-                                code
-                        );
+                plugin.getConfig().getString(
+                        "linking.messages.discord-code",
+                        "Your code is `%code%`. Type `/link %code%` in Minecraft."
+                );
 
-        event.reply(
-                message
-        )
-                .setEphemeral(
-                        true
-                )
+        message =
+                message.replace(
+                        "%code%",
+                        code
+                );
+
+        event.reply(message)
+                .setEphemeral(true)
                 .queue();
     }
+
+    // =========================================================
+    // /unlink
+    // =========================================================
 
     private void handleUnlink(
             SlashCommandInteractionEvent event
     ) {
 
         String discordId =
-                event.getUser()
-                        .getId();
+                event.getUser().getId();
 
-        if (
-                !plugin.getLinkManager()
-                        .hasDiscordLink(
-                                discordId
-                        )
-        ) {
+        LinkManager linkManager =
+                plugin.getLinkManager();
+
+        UUID minecraftUUID =
+                linkManager.getMinecraftUUID(
+                        discordId
+                );
+
+        if (minecraftUUID == null) {
 
             event.reply(
                     "❌ Your Discord account is not linked."
             )
-                    .setEphemeral(
-                            true
-                    )
+                    .setEphemeral(true)
                     .queue();
 
             return;
         }
 
-        java.util.UUID minecraftUUID =
-                plugin.getLinkManager()
-                        .getMinecraftUUID(
-                                discordId
-                        );
-
-        plugin.getLinkManager()
-                .unlinkMinecraft(
+        // Remove link permanently
+        String removedDiscordId =
+                linkManager.unlink(
                         minecraftUUID
                 );
 
-        String roleId =
-                plugin.getConfig()
-                        .getString(
-                                "linking.verified-role-id",
-                                ""
-                        );
+        if (removedDiscordId == null) {
 
-        if (
-                !roleId.isEmpty()
-                        && !roleId.equals(
-                                "PASTE_VERIFIED_ROLE_ID_HERE"
-                        )
-        ) {
+            event.reply(
+                    "❌ Failed to unlink your account."
+            )
+                    .setEphemeral(true)
+                    .queue();
 
-            for (
-                    Guild guild
-                    : event.getJDA()
-                            .getGuilds()
-            ) {
-
-                Member member =
-                        guild.getMemberById(
-                                discordId
-                        );
-
-                if (member == null) {
-                    continue;
-                }
-
-                Role role =
-                        guild.getRoleById(
-                                roleId
-                        );
-
-                if (role == null) {
-                    continue;
-                }
-
-                guild.removeRoleFromMember(
-                        member,
-                        role
-                )
-                        .queue();
-            }
+            return;
         }
+
+        // Remove verified role
+        removeVerifiedRole(
+                event,
+                discordId
+        );
 
         event.reply(
                 "✅ Your Minecraft account has been unlinked from Discord."
         )
-                .setEphemeral(
-                        true
-                )
+                .setEphemeral(true)
                 .queue();
     }
+
+    // =========================================================
+    // REMOVE VERIFIED ROLE
+    // =========================================================
+
+    private void removeVerifiedRole(
+            SlashCommandInteractionEvent event,
+            String discordId
+    ) {
+
+        String roleId =
+                plugin.getConfig().getString(
+                        "linking.verified-role-id",
+                        ""
+                );
+
+        if (
+                roleId.isEmpty()
+                        || roleId.equals(
+                                "PASTE_VERIFIED_ROLE_ID_HERE"
+                        )
+        ) {
+
+            return;
+        }
+
+        for (
+                Guild guild
+                : event.getJDA().getGuilds()
+        ) {
+
+            Member member =
+                    guild.getMemberById(
+                            discordId
+                    );
+
+            if (member == null) {
+                continue;
+            }
+
+            Role role =
+                    guild.getRoleById(
+                            roleId
+                    );
+
+            if (role == null) {
+                continue;
+            }
+
+            guild.removeRoleFromMember(
+                    member,
+                    role
+            )
+                    .queue();
+        }
+    }
+
+    // =========================================================
+    // !IP AND !ONLINE
+    // =========================================================
 
     @Override
     public void onMessageReceived(
@@ -228,13 +234,11 @@ public class DiscordListener extends ListenerAdapter {
     ) {
 
         if (
-                plugin.getConfig()
-                        .getBoolean(
-                                "settings.ignore-bots",
-                                true
-                        )
-                        && event.getAuthor()
-                                .isBot()
+                plugin.getConfig().getBoolean(
+                        "settings.ignore-bots",
+                        true
+                )
+                        && event.getAuthor().isBot()
         ) {
 
             return;
@@ -246,28 +250,25 @@ public class DiscordListener extends ListenerAdapter {
                         .trim();
 
         String ipCommand =
-                plugin.getConfig()
-                        .getString(
-                                "ip.command",
-                                "!ip"
-                        );
+                plugin.getConfig().getString(
+                        "ip.command",
+                        "!ip"
+                );
 
         String onlineCommand =
-                plugin.getConfig()
-                        .getString(
-                                "online.command",
-                                "!online"
-                        );
+                plugin.getConfig().getString(
+                        "online.command",
+                        "!online"
+                );
 
         if (
-                plugin.getConfig()
-                        .getBoolean(
-                                "ip.enabled",
-                                true
-                        )
+                plugin.getConfig().getBoolean(
+                        "ip.enabled",
+                        true
+                )
                         && message.equalsIgnoreCase(
-                                ipCommand
-                        )
+                        ipCommand
+                )
         ) {
 
             sendEmbed(
@@ -279,14 +280,13 @@ public class DiscordListener extends ListenerAdapter {
         }
 
         if (
-                plugin.getConfig()
-                        .getBoolean(
-                                "online.enabled",
-                                true
-                        )
+                plugin.getConfig().getBoolean(
+                        "online.enabled",
+                        true
+                )
                         && message.equalsIgnoreCase(
-                                onlineCommand
-                        )
+                        onlineCommand
+                )
         ) {
 
             sendEmbed(
@@ -295,6 +295,10 @@ public class DiscordListener extends ListenerAdapter {
             );
         }
     }
+
+    // =========================================================
+    // EMBEDS
+    // =========================================================
 
     private void sendEmbed(
             MessageReceivedEvent event,
@@ -306,29 +310,26 @@ public class DiscordListener extends ListenerAdapter {
 
         String title =
                 plugin.replacePlaceholders(
-                        plugin.getConfig()
-                                .getString(
-                                        path + "title",
-                                        ""
-                                )
+                        plugin.getConfig().getString(
+                                path + "title",
+                                ""
+                        )
                 );
 
         String description =
                 plugin.replacePlaceholders(
-                        plugin.getConfig()
-                                .getString(
-                                        path + "description",
-                                        ""
-                                )
+                        plugin.getConfig().getString(
+                                path + "description",
+                                ""
+                        )
                 );
 
         String colorText =
                 plugin.replacePlaceholders(
-                        plugin.getConfig()
-                                .getString(
-                                        path + "color",
-                                        "#00AAFF"
-                                )
+                        plugin.getConfig().getString(
+                                path + "color",
+                                "#00AAFF"
+                        )
                 );
 
         EmbedBuilder embed =
@@ -364,10 +365,9 @@ public class DiscordListener extends ListenerAdapter {
         }
 
         List<Map<?, ?>> fields =
-                plugin.getConfig()
-                        .getMapList(
-                                path + "fields"
-                        );
+                plugin.getConfig().getMapList(
+                        path + "fields"
+                );
 
         for (
                 Map<?, ?> field
@@ -407,24 +407,14 @@ public class DiscordListener extends ListenerAdapter {
                     );
 
             boolean inline =
-                    false;
-
-            Object inlineObject =
-                    field.get(
-                            "inline"
+                    Boolean.parseBoolean(
+                            String.valueOf(
+                                    field.getOrDefault(
+                                            "inline",
+                                            false
+                                    )
+                            )
                     );
-
-            if (
-                    inlineObject != null
-            ) {
-
-                inline =
-                        Boolean.parseBoolean(
-                                String.valueOf(
-                                        inlineObject
-                                )
-                        );
-            }
 
             embed.addField(
                     name,
@@ -434,11 +424,10 @@ public class DiscordListener extends ListenerAdapter {
         }
 
         String footer =
-                plugin.getConfig()
-                        .getString(
-                                path + "footer",
-                                ""
-                        );
+                plugin.getConfig().getString(
+                        path + "footer",
+                        ""
+                );
 
         if (!footer.isEmpty()) {
 
@@ -455,4 +444,4 @@ public class DiscordListener extends ListenerAdapter {
                 )
                 .queue();
     }
-}
+            }
