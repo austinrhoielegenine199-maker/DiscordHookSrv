@@ -55,7 +55,6 @@ public class DiscordListener extends ListenerAdapter {
                 )
                         && message.equalsIgnoreCase(ipCommand)
         ) {
-
             plugin.getLogger().info(
                     "IP command matched! Sending embed..."
             );
@@ -71,7 +70,6 @@ public class DiscordListener extends ListenerAdapter {
                 )
                         && message.equalsIgnoreCase(onlineCommand)
         ) {
-
             plugin.getLogger().info(
                     "ONLINE command matched! Sending embed..."
             );
@@ -109,3 +107,94 @@ public class DiscordListener extends ListenerAdapter {
         );
 
         EmbedBuilder embed = new EmbedBuilder();
+
+        if (!title.isEmpty()) {
+            embed.setTitle(title);
+        }
+
+        if (!description.isEmpty()) {
+            embed.setDescription(description);
+        }
+
+        try {
+            embed.setColor(Color.decode(colorText));
+        } catch (Exception error) {
+            plugin.getLogger().warning(
+                    "Invalid embed color: " + colorText
+            );
+
+            embed.setColor(Color.BLUE);
+        }
+
+        List<Map<?, ?>> fields =
+                plugin.getConfig().getMapList(
+                        path + "fields"
+                );
+
+        for (Map<?, ?> field : fields) {
+
+            Object nameObject = field.get("name");
+            Object valueObject = field.get("value");
+
+            if (
+                    nameObject == null
+                            || valueObject == null
+            ) {
+                continue;
+            }
+
+            String name = plugin.replacePlaceholders(
+                    String.valueOf(nameObject)
+            );
+
+            String value = plugin.replacePlaceholders(
+                    String.valueOf(valueObject)
+            );
+
+            boolean inline = false;
+
+            if (field.containsKey("inline")) {
+                inline = Boolean.parseBoolean(
+                        String.valueOf(
+                                field.get("inline")
+                        )
+                );
+            }
+
+            embed.addField(
+                    name,
+                    value,
+                    inline
+            );
+        }
+
+        String footer = plugin.getConfig().getString(
+                path + "footer",
+                ""
+        );
+
+        if (!footer.isEmpty()) {
+            embed.setFooter(
+                    plugin.replacePlaceholders(footer)
+            );
+        }
+
+        plugin.getLogger().info(
+                "Attempting to send "
+                        + type
+                        + " embed to Discord..."
+        );
+
+        event.getChannel()
+                .sendMessageEmbeds(embed.build())
+                .queue(
+                        success -> plugin.getLogger().info(
+                                "Embed sent successfully!"
+                        ),
+                        error -> plugin.getLogger().severe(
+                                "Failed to send embed: "
+                                        + error.getMessage()
+                        )
+                );
+    }
+}
