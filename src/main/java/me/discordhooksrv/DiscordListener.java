@@ -1,309 +1,163 @@
 package me.discordhooksrv;
 
-import net.dv8tion.jda.api.EmbedBuilder;
-import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
-import net.dv8tion.jda.api.hooks.ListenerAdapter;
-
-import java.awt.Color;
-import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
-public class DiscordListener extends ListenerAdapter {
+public class LinkManager {
 
     private final DiscordHookSRV plugin;
 
-    public DiscordListener(DiscordHookSRV plugin) {
+    private final Map<String, String> codes =
+            new HashMap<>();
+
+    private final Map<UUID, String> minecraftLinks =
+            new HashMap<>();
+
+    private final Map<String, UUID> discordLinks =
+            new HashMap<>();
+
+    private final Map<String, Long> codeExpiry =
+            new HashMap<>();
+
+    public LinkManager(DiscordHookSRV plugin) {
         this.plugin = plugin;
     }
 
-    @Override
-    public void onSlashCommandInteraction(
-            SlashCommandInteractionEvent event
-    ) {
+    public String createCode(String discordId) {
 
-        if (
-                event.getName()
-                        .equalsIgnoreCase("link")
-        ) {
+        String code;
 
-            if (!plugin.getConfig().getBoolean(
-                    "linking.enabled",
-                    true
-            )) {
+        do {
 
-                event.reply(
-                        "❌ Account linking is disabled."
-                ).setEphemeral(true).queue();
-
-                return;
-            }
-
-            String discordId =
-                    event.getUser().getId();
-
-            if (
-                    plugin.getLinkManager()
-                            .hasDiscordLink(discordId)
-            ) {
-
-                event.reply(
-                        plugin.getConfig()
-                                .getString(
-                                        "linking.messages.discord-already-linked",
-                                        "❌ Your Discord account is already linked."
-                                )
-                ).setEphemeral(true).queue();
-
-                return;
-            }
-
-            String code =
-                    plugin.getLinkManager()
-                            .createCode(discordId);
-
-            String message =
-                    plugin.getConfig()
-                            .getString(
-                                    "linking.messages.discord-code",
-                                    "Your code is `%code%`. Type `/link %code%` in Minecraft."
-                            )
-                            .replace(
-                                    "%code%",
-                                    code
-                            );
-
-            event.reply(message)
-                    .setEphemeral(true)
-                    .queue();
-
-            return;
-        }
-
-        if (
-                event.getName()
-                        .equalsIgnoreCase("unlink")
-        ) {
-
-            event.reply(
-                    "❌ Unlinking is not available yet."
-            ).setEphemeral(true).queue();
-        }
-    }
-
-    @Override
-    public void onMessageReceived(
-            MessageReceivedEvent event
-    ) {
-
-        if (
-                plugin.getConfig()
-                        .getBoolean(
-                                "settings.ignore-bots",
-                                true
-                        )
-                        && event.getAuthor().isBot()
-        ) {
-
-            return;
-        }
-
-        String message =
-                event.getMessage()
-                        .getContentRaw()
-                        .trim();
-
-        String ipCommand =
-                plugin.getConfig()
-                        .getString(
-                                "ip.command",
-                                "!ip"
-                        );
-
-        String onlineCommand =
-                plugin.getConfig()
-                        .getString(
-                                "online.command",
-                                "!online"
-                        );
-
-        if (
-                plugin.getConfig()
-                        .getBoolean(
-                                "ip.enabled",
-                                true
-                        )
-                        && message.equalsIgnoreCase(
-                                ipCommand
-                        )
-        ) {
-
-            sendEmbed(
-                    event,
-                    "ip"
+            code = String.valueOf(
+                    100000
+                            + (int)
+                            (Math.random() * 900000)
             );
 
-            return;
+        } while (codes.containsKey(code));
+
+        codes.put(
+                code,
+                discordId
+        );
+
+        long expiry =
+                System.currentTimeMillis()
+                        + (
+                        plugin.getConfig()
+                                .getLong(
+                                        "linking.code-expire-seconds",
+                                        300
+                                )
+                                * 1000
+                );
+
+        codeExpiry.put(
+                code,
+                expiry
+        );
+
+        return code;
+    }
+
+    public String getDiscordIdFromCode(
+            String code
+    ) {
+
+        if (!codes.containsKey(code)) {
+            return null;
         }
 
+        Long expiry =
+                codeExpiry.get(code);
+
         if (
-                plugin.getConfig()
-                        .getBoolean(
-                                "online.enabled",
-                                true
-                        )
-                        && message.equalsIgnoreCase(
-                                onlineCommand
-                        )
+                expiry == null
+                        || System.currentTimeMillis()
+                        > expiry
         ) {
 
-            sendEmbed(
-                    event,
-                    "online"
+            removeCode(code);
+
+            return null;
+        }
+
+        return codes.get(code);
+    }
+
+    public boolean hasMinecraftLink(
+            UUID uuid
+    ) {
+
+        return minecraftLinks.containsKey(uuid);
+    }
+
+    public boolean hasDiscordLink(
+            String discordId
+    ) {
+
+        return discordLinks.containsKey(discordId);
+    }
+
+    public void link(
+            UUID minecraftUUID,
+            String discordId
+    ) {
+
+        minecraftLinks.put(
+                minecraftUUID,
+                discordId
+        );
+
+        discordLinks.put(
+                discordId,
+                minecraftUUID
+        );
+    }
+
+    public void unlinkMinecraft(
+            UUID minecraftUUID
+    ) {
+
+        String discordId =
+                minecraftLinks.remove(
+                        minecraftUUID
+                );
+
+        if (discordId != null) {
+
+            discordLinks.remove(
+                    discordId
             );
         }
     }
 
-    private void sendEmbed(
-            MessageReceivedEvent event,
-            String type
+    public UUID getMinecraftUUID(
+            String discordId
     ) {
 
-        String path =
-                type + ".embed.";
-
-        String title =
-                plugin.replacePlaceholders(
-                        plugin.getConfig()
-                                .getString(
-                                        path + "title",
-                                        ""
-                                )
-                );
-
-        String description =
-                plugin.replacePlaceholders(
-                        plugin.getConfig()
-                                .getString(
-                                        path + "description",
-                                        ""
-                                )
-                );
-
-        String colorText =
-                plugin.replacePlaceholders(
-                        plugin.getConfig()
-                                .getString(
-                                        path + "color",
-                                        "#00AAFF"
-                                )
-                );
-
-        EmbedBuilder embed =
-                new EmbedBuilder();
-
-        if (!title.isEmpty()) {
-
-            embed.setTitle(title);
-        }
-
-        if (!description.isEmpty()) {
-
-            embed.setDescription(description);
-        }
-
-        try {
-
-            embed.setColor(
-                    Color.decode(colorText)
-            );
-
-        } catch (Exception ignored) {
-
-            embed.setColor(Color.BLUE);
-        }
-
-        List<Map<?, ?>> fields =
-                plugin.getConfig()
-                        .getMapList(
-                                path + "fields"
-                        );
-
-        for (
-                Map<?, ?> field
-                : fields
-        ) {
-
-            Object nameObject =
-                    field.get("name");
-
-            Object valueObject =
-                    field.get("value");
-
-            if (
-                    nameObject == null
-                            || valueObject == null
-            ) {
-
-                continue;
-            }
-
-            String name =
-                    plugin.replacePlaceholders(
-                            String.valueOf(
-                                    nameObject
-                            )
-                    );
-
-            String value =
-                    plugin.replacePlaceholders(
-                            String.valueOf(
-                                    valueObject
-                            )
-                    );
-
-            boolean inline = false;
-
-            Object inlineObject =
-                    field.get("inline");
-
-            if (inlineObject != null) {
-
-                inline =
-                        Boolean.parseBoolean(
-                                String.valueOf(
-                                        inlineObject
-                                )
-                        );
-            }
-
-            embed.addField(
-                    name,
-                    value,
-                    inline
-            );
-        }
-
-        String footer =
-                plugin.getConfig()
-                        .getString(
-                                path + "footer",
-                                ""
-                        );
-
-        if (!footer.isEmpty()) {
-
-            embed.setFooter(
-                    plugin.replacePlaceholders(
-                            footer
-                    )
-            );
-        }
-
-        event.getChannel()
-                .sendMessageEmbeds(
-                        embed.build()
-                )
-                .queue();
+        return discordLinks.get(
+                discordId
+        );
     }
-            }
+
+    public String getDiscordId(
+            UUID minecraftUUID
+    ) {
+
+        return minecraftLinks.get(
+                minecraftUUID
+        );
+    }
+
+    public void removeCode(
+            String code
+    ) {
+
+        codes.remove(code);
+
+        codeExpiry.remove(code);
+    }
+}
