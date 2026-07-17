@@ -204,31 +204,23 @@ public class DiscordListener extends ListenerAdapter {
 
         if (!title.isEmpty()) {
 
-            embed.setTitle(
-                    title
-            );
+            embed.setTitle(title);
         }
 
         if (!description.isEmpty()) {
 
-            embed.setDescription(
-                    description
-            );
+            embed.setDescription(description);
         }
 
         try {
 
             embed.setColor(
-                    Color.decode(
-                            colorText
-                    )
+                    Color.decode(colorText)
             );
 
         } catch (Exception ignored) {
 
-            embed.setColor(
-                    Color.BLUE
-            );
+            embed.setColor(Color.BLUE);
         }
 
         List<Map<?, ?>> fields =
@@ -243,14 +235,10 @@ public class DiscordListener extends ListenerAdapter {
         ) {
 
             Object nameObject =
-                    field.get(
-                            "name"
-                    );
+                    field.get("name");
 
             Object valueObject =
-                    field.get(
-                            "value"
-                    );
+                    field.get("value");
 
             if (
                     nameObject == null
@@ -274,15 +262,20 @@ public class DiscordListener extends ListenerAdapter {
                             )
                     );
 
-            boolean inline =
-                    Boolean.parseBoolean(
-                            String.valueOf(
-                                    field.getOrDefault(
-                                            "inline",
-                                            false
-                                    )
-                            )
-                    );
+            boolean inline = false;
+
+            Object inlineObject =
+                    field.get("inline");
+
+            if (inlineObject != null) {
+
+                inline =
+                        Boolean.parseBoolean(
+                                String.valueOf(
+                                        inlineObject
+                                )
+                        );
+            }
 
             embed.addField(
                     name,
@@ -313,4 +306,4 @@ public class DiscordListener extends ListenerAdapter {
                 )
                 .queue();
     }
-                }
+            }
