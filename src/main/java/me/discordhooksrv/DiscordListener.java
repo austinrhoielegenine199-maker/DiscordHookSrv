@@ -19,11 +19,18 @@ public class DiscordListener extends ListenerAdapter {
     @Override
     public void onMessageReceived(MessageReceivedEvent event) {
 
+        plugin.getLogger().info(
+                "Discord message received: "
+                        + event.getMessage().getContentRaw()
+        );
+
         if (event.getAuthor().isBot()) {
             return;
         }
 
-        String message = event.getMessage().getContentRaw().trim();
+        String message = event.getMessage()
+                .getContentRaw()
+                .trim();
 
         String ipCommand = plugin.getConfig().getString(
                 "ip.command",
@@ -36,7 +43,10 @@ public class DiscordListener extends ListenerAdapter {
         );
 
         if (
-                plugin.getConfig().getBoolean("ip.enabled", true)
+                plugin.getConfig().getBoolean(
+                        "ip.enabled",
+                        true
+                )
                         && message.equalsIgnoreCase(ipCommand)
         ) {
             sendEmbed(event, "ip");
@@ -44,7 +54,10 @@ public class DiscordListener extends ListenerAdapter {
         }
 
         if (
-                plugin.getConfig().getBoolean("online.enabled", true)
+                plugin.getConfig().getBoolean(
+                        "online.enabled",
+                        true
+                )
                         && message.equalsIgnoreCase(onlineCommand)
         ) {
             sendEmbed(event, "online");
@@ -90,7 +103,9 @@ public class DiscordListener extends ListenerAdapter {
         }
 
         try {
-            embed.setColor(Color.decode(colorText));
+            embed.setColor(
+                    Color.decode(colorText)
+            );
         } catch (Exception ignored) {
             embed.setColor(Color.BLUE);
         }
@@ -105,7 +120,10 @@ public class DiscordListener extends ListenerAdapter {
             Object nameObject = field.get("name");
             Object valueObject = field.get("value");
 
-            if (nameObject == null || valueObject == null) {
+            if (
+                    nameObject == null
+                            || valueObject == null
+            ) {
                 continue;
             }
 
@@ -121,7 +139,9 @@ public class DiscordListener extends ListenerAdapter {
 
             if (field.containsKey("inline")) {
                 inline = Boolean.parseBoolean(
-                        String.valueOf(field.get("inline"))
+                        String.valueOf(
+                                field.get("inline")
+                        )
                 );
             }
 
@@ -144,7 +164,9 @@ public class DiscordListener extends ListenerAdapter {
         }
 
         event.getChannel()
-                .sendMessageEmbeds(embed.build())
+                .sendMessageEmbeds(
+                        embed.build()
+                )
                 .queue();
     }
 }
