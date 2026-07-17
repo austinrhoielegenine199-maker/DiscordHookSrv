@@ -12,6 +12,15 @@ discord:
 
 
 # ============================================================
+# AUTOMATIC UPDATER
+# ============================================================
+
+updater:
+
+  enabled: true
+
+
+# ============================================================
 # !IP COMMAND
 # ============================================================
 
@@ -107,11 +116,16 @@ settings:
 
 linking:
 
-  # Enable or disable account linking.
   enabled: true
 
   # Linking code expiration time in seconds.
-  code-expire-seconds: 300
+  code-expiry-seconds: 300
+
+  # Maximum wrong attempts before the code is locked.
+  max-attempts: 5
+
+  # How long the code is locked after too many failed attempts.
+  lockout-seconds: 300
 
   # Discord role ID given to linked users.
   verified-role-id: "PASTE_VERIFIED_ROLE_ID_HERE"
@@ -137,12 +151,14 @@ linking:
 
       This code expires in 5 minutes.
 
-    minecraft-success: "&a&l✓ &aYour Minecraft account has been linked to Discord!"
-
-    minecraft-invalid: "&cThat linking code is invalid or expired."
-
-    minecraft-already-linked: "&cYour Minecraft account is already linked to Discord."
-
     discord-already-linked: "❌ Your Discord account is already linked to a Minecraft account."
 
-    discord-success: "✅ Your Minecraft account has been successfully linked!"
+    minecraft-success: "&a&l✓ &aYour Minecraft account has been linked to Discord!"
+
+    minecraft-invalid-code: "&cThat linking code is invalid or expired."
+
+    minecraft-locked: "&cToo many failed attempts. Please try again later."
+
+    minecraft-mc-already-linked: "&cYour Minecraft account is already linked to Discord."
+
+    minecraft-discord-already-linked: "&cThat Discord account is already linked to a Minecraft account."
