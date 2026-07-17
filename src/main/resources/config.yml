@@ -1,0 +1,137 @@
+# ============================================================
+# DiscordHookSRV
+# Made By ArchiveAustin
+# ============================================================
+
+discord:
+
+  # Your Discord bot token.
+  #
+  # HOW TO GET IT:
+  # 1. Go to the Discord Developer Portal.
+  # 2. Open your bot application.
+  # 3. Go to the "Bot" section.
+  # 4. Click "Reset Token" or copy your token.
+  # 5. Paste it between the quotation marks below.
+  #
+  # NEVER SHARE THIS TOKEN.
+  bot-token: "PASTE_BOT_TOKEN_HERE"
+
+
+# ============================================================
+# !IP COMMAND
+# ============================================================
+
+ip:
+
+  # Enable or disable the !ip command.
+  enabled: true
+
+  # The command people type in Discord.
+  command: "!ip"
+
+  embed:
+
+    # The title at the top of the embed.
+    title: "🌐 NyrethaSMP"
+
+    # The main text inside the embed.
+    description: "Join our Minecraft server!"
+
+    # Embed color.
+    # Use a HEX color.
+    # Example: #00AAFF
+    color: "#00AAFF"
+
+    fields:
+
+      # First field.
+      - name: "Server IP"
+        value: "play.example.com"
+        inline: true
+
+      # Second field.
+      - name: "Port"
+        value: "25565"
+        inline: true
+
+    # Text at the bottom of the embed.
+    footer: "Made By ArchiveAustin"
+
+
+# ============================================================
+# !ONLINE COMMAND
+# ============================================================
+
+online:
+
+  # Enable or disable the !online command.
+  enabled: true
+
+  # The command people type in Discord.
+  command: "!online"
+
+  embed:
+
+    # Embed title.
+    title: "Server Status"
+
+    # Available placeholders:
+    #
+    # %online%        = Current online players
+    # %max_players%   = Maximum player slots
+    # %status%        = 🟢 Online or 🔴 Offline
+    # %status_color%  = Green or red HEX color
+    #
+    description: "%status% **%online%/%max_players% players online**"
+
+    # Automatically changes between green and red.
+    color: "%status_color%"
+
+    fields:
+
+      - name: "Players Online"
+        value: "%online%/%max_players%"
+        inline: true
+
+      - name: "Status"
+        value: "%status%"
+        inline: true
+
+    footer: "Made By ArchiveAustin"
+
+
+# ============================================================
+# STATUS SETTINGS
+# ============================================================
+
+status:
+
+  # Used when the server is online.
+  online:
+
+    # Replaces %status%.
+    text: "🟢 Online"
+
+    # Replaces %status_color%.
+    color: "#00FF00"
+
+
+  # Used when the server is offline.
+  offline:
+
+    # Replaces %status%.
+    text: "🔴 Offline"
+
+    # Replaces %status_color%.
+    color: "#FF0000"
+
+
+# ============================================================
+# GENERAL SETTINGS
+# ============================================================
+
+settings:
+
+  # If true, the bot ignores other bots.
+  ignore-bots: true
