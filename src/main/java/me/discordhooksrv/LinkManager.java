@@ -1,5 +1,9 @@
 package me.discordhooksrv;
 
+import org.bukkit.configuration.file.YamlConfiguration;
+
+import java.io.File;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -20,23 +24,59 @@ public class LinkManager {
     private final Map<String, Long> codeExpiry =
             new HashMap<>();
 
-    public LinkManager(DiscordHookSRV plugin) {
+    private final File linksFile;
+
+    private final YamlConfiguration linksConfig;
+
+    public LinkManager(
+            DiscordHookSRV plugin
+    ) {
+
         this.plugin = plugin;
+
+        if (!plugin.getDataFolder().exists()) {
+            plugin.getDataFolder().mkdirs();
+        }
+
+        linksFile =
+                new File(
+                        plugin.getDataFolder(),
+                        "links.yml"
+                );
+
+        linksConfig =
+                YamlConfiguration.loadConfiguration(
+                        linksFile
+                );
+
+        loadLinks();
     }
 
-    public String createCode(String discordId) {
+    public String createCode(
+            String discordId
+    ) {
 
         String code;
 
         do {
 
-            code = String.valueOf(
-                    100000
-                            + (int)
-                            (Math.random() * 900000)
-            );
+            code =
+                    String.valueOf(
+                            100000
+                                    + (
+                                    int
+                                            (
+                                                    Math.random()
+                                                            * 900000
+                                            )
+                            )
+                    );
 
-        } while (codes.containsKey(code));
+        } while (
+                codes.containsKey(
+                        code
+                )
+        );
 
         codes.put(
                 code,
@@ -66,12 +106,19 @@ public class LinkManager {
             String code
     ) {
 
-        if (!codes.containsKey(code)) {
+        if (
+                !codes.containsKey(
+                        code
+                )
+        ) {
+
             return null;
         }
 
         Long expiry =
-                codeExpiry.get(code);
+                codeExpiry.get(
+                        code
+                );
 
         if (
                 expiry == null
@@ -79,26 +126,34 @@ public class LinkManager {
                         > expiry
         ) {
 
-            removeCode(code);
+            removeCode(
+                    code
+            );
 
             return null;
         }
 
-        return codes.get(code);
+        return codes.get(
+                code
+        );
     }
 
     public boolean hasMinecraftLink(
             UUID uuid
     ) {
 
-        return minecraftLinks.containsKey(uuid);
+        return minecraftLinks.containsKey(
+                uuid
+        );
     }
 
     public boolean hasDiscordLink(
             String discordId
     ) {
 
-        return discordLinks.containsKey(discordId);
+        return discordLinks.containsKey(
+                discordId
+        );
     }
 
     public void link(
@@ -115,6 +170,8 @@ public class LinkManager {
                 discordId,
                 minecraftUUID
         );
+
+        saveLinks();
     }
 
     public void unlinkMinecraft(
@@ -126,12 +183,16 @@ public class LinkManager {
                         minecraftUUID
                 );
 
-        if (discordId != null) {
+        if (
+                discordId != null
+        ) {
 
             discordLinks.remove(
                     discordId
             );
         }
+
+        saveLinks();
     }
 
     public UUID getMinecraftUUID(
@@ -156,8 +217,125 @@ public class LinkManager {
             String code
     ) {
 
-        codes.remove(code);
+        codes.remove(
+                code
+        );
 
-        codeExpiry.remove(code);
+        codeExpiry.remove(
+                code
+        );
     }
-}
+
+    private void saveLinks() {
+
+        linksConfig
+                .set(
+                        "links",
+                        null
+                );
+
+        for (
+                Map.Entry<UUID, String> entry
+                : minecraftLinks.entrySet()
+        ) {
+
+            linksConfig.set(
+                    "links."
+                            + entry.getKey()
+                            .toString(),
+                    entry.getValue()
+            );
+        }
+
+        try {
+
+            linksConfig.save(
+                    linksFile
+            );
+
+        } catch (
+                IOException e
+        ) {
+
+            plugin.getLogger()
+                    .severe(
+                            "Failed to save links.yml!"
+                    );
+
+            e.printStackTrace();
+        }
+    }
+
+    private void loadLinks() {
+
+        if (
+                !linksConfig
+                        .isConfigurationSection(
+                                "links"
+                        )
+        ) {
+
+            return;
+        }
+
+        for (
+                String key
+                : linksConfig
+                        .getConfigurationSection(
+                                "links"
+                        )
+                        .getKeys(
+                                false
+                        )
+        ) {
+
+            try {
+
+                UUID minecraftUUID =
+                        UUID.fromString(
+                                key
+                        );
+
+                String discordId =
+                        linksConfig.getString(
+                                "links."
+                                        + key
+                        );
+
+                if (
+                        discordId == null
+                ) {
+
+                    continue;
+                }
+
+                minecraftLinks.put(
+                        minecraftUUID,
+                        discordId
+                );
+
+                discordLinks.put(
+                        discordId,
+                        minecraftUUID
+                );
+
+            } catch (
+                    IllegalArgumentException e
+            ) {
+
+                plugin.getLogger()
+                        .warning(
+                                "Invalid link found in links.yml: "
+                                        + key
+                        );
+            }
+        }
+
+        plugin.getLogger()
+                .info(
+                        "Loaded "
+                                + minecraftLinks.size()
+                                + " Discord account link(s)."
+                );
+    }
+            }
