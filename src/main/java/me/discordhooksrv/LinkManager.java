@@ -4,334 +4,354 @@ import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 public class LinkManager {
 
-private final DiscordHookSRV plugin;
+    private final DiscordHookSRV plugin;
 
-private final Map<String, String> codes =
-        new HashMap<>();
+    private final File file;
+    private final YamlConfiguration data;
 
-private final Map<UUID, String> minecraftLinks =
-        new HashMap<>();
+    private final Map<String, LinkCode> activeCodes = new HashMap<>();
+    private final Map<String, Integer> failedAttempts = new HashMap<>();
+    private final Map<String, Long> lockedAccounts = new HashMap<>();
 
-private final Map<String, UUID> discordLinks =
-        new HashMap<>();
+    public LinkManager(DiscordHookSRV plugin) {
 
-private final Map<String, Long> codeExpiry =
-        new HashMap<>();
+        this.plugin = plugin;
 
-private final File linksFile;
+        file = new File(plugin.getDataFolder(), "links.yml");
 
-private final YamlConfiguration linksConfig;
+        if (!file.exists()) {
+            try {
+                file.createNewFile();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
 
-public LinkManager(
-        DiscordHookSRV plugin
-) {
-
-    this.plugin = plugin;
-
-    if (!plugin.getDataFolder().exists()) {
-        plugin.getDataFolder().mkdirs();
+        data = YamlConfiguration.loadConfiguration(file);
     }
 
-    linksFile =
-            new File(
-                    plugin.getDataFolder(),
-                    "links.yml"
-            );
+    // =========================
+    // CREATE LINK CODE
+    // =========================
 
-    linksConfig =
-            YamlConfiguration.loadConfiguration(
-                    linksFile
-            );
+    public String createCode(String discordId) {
 
-    loadLinks();
-}
+        removeExpiredCodes();
 
-public String createCode(
-        String discordId
-) {
+        // One Discord account = one Minecraft account
+        if (getMinecraftUUID(discordId) != null) {
+            return null;
+        }
 
-    String code;
+        String code;
 
-    do {
+        do {
+            code = String.valueOf(100000 + new Random().nextInt(900000));
+        } while (activeCodes.containsKey(code));
 
-        code = String.valueOf(
-                100000
-                        + (int) (
-                        Math.random()
-                                * 900000
-                )
+        long expiry =
+                System.currentTimeMillis()
+                        + (plugin.getConfig().getLong(
+                                "linking.code-expiry-seconds",
+                                300
+                        ) * 1000);
+
+        activeCodes.put(
+                code,
+                new LinkCode(discordId, expiry)
         );
 
-    } while (
-            codes.containsKey(
-                    code
-            )
-    );
-
-    codes.put(
-            code,
-            discordId
-    );
-
-    long expiry =
-            System.currentTimeMillis()
-                    + (
-                    plugin.getConfig()
-                            .getLong(
-                                    "linking.code-expire-seconds",
-                                    300
-                            )
-                            * 1000
-            );
-
-    codeExpiry.put(
-            code,
-            expiry
-    );
-
-    return code;
-}
-
-public String getDiscordIdFromCode(
-        String code
-) {
-
-    if (
-            !codes.containsKey(
-                    code
-            )
-    ) {
-
-        return null;
+        return code;
     }
 
-    Long expiry =
-            codeExpiry.get(
-                    code
-            );
+    // =========================
+    // USE LINK CODE
+    // =========================
 
-    if (
-            expiry == null
-                    || System.currentTimeMillis()
-                    > expiry
+    public String link(
+            UUID minecraftUUID,
+            String minecraftName,
+            String code
     ) {
 
-        removeCode(
-                code
-        );
+        removeExpiredCodes();
 
-        return null;
-    }
+        LinkCode linkCode =
+                activeCodes.get(code);
 
-    return codes.get(
-            code
-    );
-}
+        if (linkCode == null) {
+            return "INVALID";
+        }
 
-public boolean hasMinecraftLink(
-        UUID uuid
-) {
+        String discordId =
+                linkCode.discordId;
 
-    return minecraftLinks.containsKey(
-            uuid
-    );
-}
+        // Check lockout
+        if (isLocked(discordId)) {
+            return "LOCKED";
+        }
 
-public boolean hasDiscordLink(
-        String discordId
-) {
+        // One Minecraft account = one Discord account
+        String existingDiscord =
+                getDiscordId(minecraftUUID);
 
-    return discordLinks.containsKey(
-            discordId
-    );
-}
+        if (existingDiscord != null) {
+            return "MC_ALREADY_LINKED";
+        }
 
-public void link(
-        UUID minecraftUUID,
-        String discordId
-) {
+        // One Discord account = one Minecraft account
+        UUID existingMinecraft =
+                getMinecraftUUID(discordId);
 
-    minecraftLinks.put(
-            minecraftUUID,
-            discordId
-    );
+        if (existingMinecraft != null) {
+            return "DISCORD_ALREADY_LINKED";
+        }
 
-    discordLinks.put(
-            discordId,
-            minecraftUUID
-    );
+        // Save permanently
+        String path =
+                "links."
+                        + minecraftUUID
+                        + ".discord-id";
 
-    saveLinks();
-}
-
-public void unlinkMinecraft(
-        UUID minecraftUUID
-) {
-
-    String discordId =
-            minecraftLinks.remove(
-                    minecraftUUID
-            );
-
-    if (
-            discordId != null
-    ) {
-
-        discordLinks.remove(
+        data.set(
+                path,
                 discordId
         );
-    }
 
-    saveLinks();
-}
-
-public UUID getMinecraftUUID(
-        String discordId
-) {
-
-    return discordLinks.get(
-            discordId
-    );
-}
-
-public String getDiscordId(
-        UUID minecraftUUID
-) {
-
-    return minecraftLinks.get(
-            minecraftUUID
-    );
-}
-
-public void removeCode(
-        String code
-) {
-
-    codes.remove(
-            code
-    );
-
-    codeExpiry.remove(
-            code
-    );
-}
-
-private void saveLinks() {
-
-    linksConfig.set(
-            "links",
-            null
-    );
-
-    for (
-            Map.Entry<UUID, String> entry
-            : minecraftLinks.entrySet()
-    ) {
-
-        linksConfig.set(
+        data.set(
                 "links."
-                        + entry.getKey()
-                        .toString(),
-                entry.getValue()
+                        + minecraftUUID
+                        + ".minecraft-name",
+                minecraftName
         );
+
+        save();
+
+        activeCodes.remove(code);
+
+        failedAttempts.remove(discordId);
+
+        return "SUCCESS";
     }
 
-    try {
+    // =========================
+    // FAILED ATTEMPT
+    // =========================
 
-        linksConfig.save(
-                linksFile
-        );
-
-    } catch (
-            IOException e
+    public boolean registerFailedAttempt(
+            String discordId
     ) {
 
-        plugin.getLogger()
-                .severe(
-                        "Failed to save links.yml!"
+        int attempts =
+                failedAttempts.getOrDefault(
+                        discordId,
+                        0
+                ) + 1;
+
+        int maxAttempts =
+                plugin.getConfig().getInt(
+                        "linking.max-attempts",
+                        5
                 );
 
-        e.printStackTrace();
+        if (attempts >= maxAttempts) {
+
+            long lockout =
+                    plugin.getConfig().getLong(
+                            "linking.lockout-seconds",
+                            300
+                    ) * 1000;
+
+            lockedAccounts.put(
+                    discordId,
+                    System.currentTimeMillis()
+                            + lockout
+            );
+
+            failedAttempts.remove(discordId);
+
+            return true;
+        }
+
+        failedAttempts.put(
+                discordId,
+                attempts
+        );
+
+        return false;
     }
-}
 
-private void loadLinks() {
+    // =========================
+    // CHECK LINK
+    // =========================
 
-    if (
-            !linksConfig
-                    .isConfigurationSection(
-                            "links"
-                    )
+    public String getDiscordId(
+            UUID minecraftUUID
     ) {
 
-        return;
+        return data.getString(
+                "links."
+                        + minecraftUUID
+                        + ".discord-id"
+        );
     }
 
-    for (
-            String key
-            : linksConfig
-                    .getConfigurationSection(
-                            "links"
-                    )
-                    .getKeys(
-                            false
-                    )
+    public UUID getMinecraftUUID(
+            String discordId
     ) {
 
-        try {
+        if (!data.isConfigurationSection("links")) {
+            return null;
+        }
 
-            UUID minecraftUUID =
-                    UUID.fromString(
-                            key
-                    );
+        for (
+                String uuidString
+                        : data.getConfigurationSection(
+                                "links"
+                        ).getKeys(false)
+        ) {
 
-            String discordId =
-                    linksConfig.getString(
+            String savedDiscordId =
+                    data.getString(
                             "links."
-                                    + key
+                                    + uuidString
+                                    + ".discord-id"
                     );
 
             if (
-                    discordId == null
+                    discordId.equals(
+                            savedDiscordId
+                    )
             ) {
 
-                continue;
+                try {
+                    return UUID.fromString(
+                            uuidString
+                    );
+                } catch (Exception ignored) {
+                }
             }
+        }
 
-            minecraftLinks.put(
-                    minecraftUUID,
+        return null;
+    }
+
+    // =========================
+    // UNLINK BY UUID
+    // =========================
+
+    public String unlink(
+            UUID minecraftUUID
+    ) {
+
+        String path =
+                "links."
+                        + minecraftUUID;
+
+        if (!data.contains(path)) {
+            return null;
+        }
+
+        String discordId =
+                data.getString(
+                        path
+                                + ".discord-id"
+                );
+
+        data.set(
+                path,
+                null
+        );
+
+        save();
+
+        return discordId;
+    }
+
+    // =========================
+    // REMOVE EXPIRED CODES
+    // =========================
+
+    public void removeExpiredCodes() {
+
+        long now =
+                System.currentTimeMillis();
+
+        activeCodes.entrySet().removeIf(
+                entry ->
+                        entry.getValue().expiry
+                                <= now
+        );
+    }
+
+    // =========================
+    // LOCKOUT
+    // =========================
+
+    private boolean isLocked(
+            String discordId
+    ) {
+
+        Long expiry =
+                lockedAccounts.get(
+                        discordId
+                );
+
+        if (expiry == null) {
+            return false;
+        }
+
+        if (
+                expiry
+                        <= System.currentTimeMillis()
+        ) {
+
+            lockedAccounts.remove(
                     discordId
             );
 
-            discordLinks.put(
-                    discordId,
-                    minecraftUUID
-            );
+            return false;
+        }
 
-        } catch (
-                IllegalArgumentException e
-        ) {
+        return true;
+    }
 
-            plugin.getLogger()
-                    .warning(
-                            "Invalid link found in links.yml: "
-                                    + key
-                    );
+    // =========================
+    // SAVE
+    // =========================
+
+    private void save() {
+
+        try {
+            data.save(file);
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
-    plugin.getLogger()
-            .info(
-                    "Loaded "
-                            + minecraftLinks.size()
-                            + " Discord account link(s)."
-            );
-}
+    // =========================
+    // LINK CODE CLASS
+    // =========================
 
+    private static class LinkCode {
+
+        private final String discordId;
+        private final long expiry;
+
+        private LinkCode(
+                String discordId,
+                long expiry
+        ) {
+
+            this.discordId =
+                    discordId;
+
+            this.expiry =
+                    expiry;
+        }
+    }
 }
