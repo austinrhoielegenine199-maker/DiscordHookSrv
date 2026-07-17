@@ -5,9 +5,10 @@ api-version: '1.21'
 
 author: ArchiveAustin
 
-description: Discord bot integration with account linking and configurable Discord commands.
+description: Discord bot integration with account linking, permanent link storage, configurable !ip and !online embeds, and automatic updates.
 
 commands:
+
   discordhooksrv:
     description: DiscordHookSRV management command
     usage: /discordhooksrv reload
