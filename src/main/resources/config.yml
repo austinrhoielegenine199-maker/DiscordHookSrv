@@ -7,13 +7,6 @@ discord:
 
   # Your Discord bot token.
   #
-  # HOW TO GET IT:
-  # 1. Go to the Discord Developer Portal.
-  # 2. Open your bot application.
-  # 3. Go to the "Bot" section.
-  # 4. Click "Reset Token" or copy your token.
-  # 5. Paste it between the quotation marks below.
-  #
   # NEVER SHARE THIS TOKEN.
   bot-token: "PASTE_BOT_TOKEN_HERE"
 
@@ -24,38 +17,28 @@ discord:
 
 ip:
 
-  # Enable or disable the !ip command.
   enabled: true
 
-  # The command people type in Discord.
   command: "!ip"
 
   embed:
 
-    # The title at the top of the embed.
     title: "🌐 NyrethaSMP"
 
-    # The main text inside the embed.
     description: "Join our Minecraft server!"
 
-    # Embed color.
-    # Use a HEX color.
-    # Example: #00AAFF
     color: "#00AAFF"
 
     fields:
 
-      # First field.
       - name: "Server IP"
         value: "play.example.com"
         inline: true
 
-      # Second field.
       - name: "Port"
         value: "25565"
         inline: true
 
-    # Text at the bottom of the embed.
     footer: "Made By ArchiveAustin"
 
 
@@ -65,27 +48,16 @@ ip:
 
 online:
 
-  # Enable or disable the !online command.
   enabled: true
 
-  # The command people type in Discord.
   command: "!online"
 
   embed:
 
-    # Embed title.
     title: "Server Status"
 
-    # Available placeholders:
-    #
-    # %online%        = Current online players
-    # %max_players%   = Maximum player slots
-    # %status%        = 🟢 Online or 🔴 Offline
-    # %status_color%  = Green or red HEX color
-    #
     description: "%status% **%online%/%max_players% players online**"
 
-    # Automatically changes between green and red.
     color: "%status_color%"
 
     fields:
@@ -107,23 +79,16 @@ online:
 
 status:
 
-  # Used when the server is online.
   online:
 
-    # Replaces %status%.
     text: "🟢 Online"
 
-    # Replaces %status_color%.
     color: "#00FF00"
 
-
-  # Used when the server is offline.
   offline:
 
-    # Replaces %status%.
     text: "🔴 Offline"
 
-    # Replaces %status_color%.
     color: "#FF0000"
 
 
@@ -133,5 +98,51 @@ status:
 
 settings:
 
-  # If true, the bot ignores other bots.
   ignore-bots: true
+
+
+# ============================================================
+# ACCOUNT LINKING
+# ============================================================
+
+linking:
+
+  # Enable or disable account linking.
+  enabled: true
+
+  # Linking code expiration time in seconds.
+  code-expire-seconds: 300
+
+  # Discord role ID given to linked users.
+  verified-role-id: "PASTE_VERIFIED_ROLE_ID_HERE"
+
+  # Change Discord nickname to Minecraft username.
+  force-minecraft-nickname: true
+
+  # Change nickname back if the user manually changes it.
+  prevent-nickname-changes: true
+
+  messages:
+
+    discord-code: |
+      🔗 **Account Linking**
+
+      Your linking code is:
+
+      `%code%`
+
+      Join the Minecraft server and type:
+
+      `/link %code%`
+
+      This code expires in 5 minutes.
+
+    minecraft-success: "&a&l✓ &aYour Minecraft account has been linked to Discord!"
+
+    minecraft-invalid: "&cThat linking code is invalid or expired."
+
+    minecraft-already-linked: "&cYour Minecraft account is already linked to Discord."
+
+    discord-already-linked: "❌ Your Discord account is already linked to a Minecraft account."
+
+    discord-success: "✅ Your Minecraft account has been successfully linked!"
