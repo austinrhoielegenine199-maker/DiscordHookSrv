@@ -307,9 +307,16 @@ public class LinkManager {
         save();
     }
 
-    public void unlink(
+    public String unlink(
             UUID minecraftUUID
     ) {
+
+        String discordId =
+                data.getString(
+                        "links."
+                                + minecraftUUID
+                                + ".discord"
+                );
 
         data.set(
                 "links."
@@ -318,6 +325,8 @@ public class LinkManager {
         );
 
         save();
+
+        return discordId;
     }
 
     public void removeCode(
@@ -419,4 +428,4 @@ public class LinkManager {
             e.printStackTrace();
         }
     }
-                }
+}
