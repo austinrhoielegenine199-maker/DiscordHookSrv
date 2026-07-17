@@ -52,9 +52,10 @@ public class DiscordHookSRV extends JavaPlugin {
 
     private boolean startDiscordBot() {
 
-        String token = getConfig().getString(
-                "discord.bot-token"
-        );
+        String token =
+                getConfig().getString(
+                        "discord.bot-token"
+                );
 
         if (
                 token == null
@@ -77,23 +78,24 @@ public class DiscordHookSRV extends JavaPlugin {
 
         try {
 
-            jda = JDABuilder.createDefault(
-                    token,
-                    GatewayIntent.GUILD_MESSAGES,
-                    GatewayIntent.MESSAGE_CONTENT
-            )
+            jda =
+                    JDABuilder.createDefault(
+                            token,
+                            GatewayIntent.GUILD_MESSAGES,
+                            GatewayIntent.MESSAGE_CONTENT
+                    )
 
-                    .setActivity(
-                            Activity.playing(
-                                    "Minecraft"
+                            .setActivity(
+                                    Activity.playing(
+                                            "Minecraft"
+                                    )
                             )
-                    )
 
-                    .addEventListeners(
-                            new DiscordListener(this)
-                    )
+                            .addEventListeners(
+                                    new DiscordListener(this)
+                            )
 
-                    .build();
+                            .build();
 
             registerSlashCommands();
 
@@ -133,13 +135,16 @@ public class DiscordHookSRV extends JavaPlugin {
                         )
                 )
                 .queue(
-                        success -> getLogger().info(
-                                "Discord slash commands registered."
-                        ),
-                        error -> getLogger().severe(
-                                "Failed to register Discord slash commands: "
-                                        + error.getMessage()
-                        )
+                        success ->
+                                getLogger().info(
+                                        "Discord slash commands registered."
+                                ),
+
+                        error ->
+                                getLogger().severe(
+                                        "Failed to register Discord slash commands: "
+                                                + error.getMessage()
+                                )
                 );
     }
 
@@ -206,10 +211,12 @@ public class DiscordHookSRV extends JavaPlugin {
                 return true;
             }
 
-            if (!getConfig().getBoolean(
-                    "linking.enabled",
-                    true
-            )) {
+            if (
+                    !getConfig().getBoolean(
+                            "linking.enabled",
+                            true
+                    )
+            ) {
 
                 player.sendMessage(
                         ChatColor.RED
@@ -229,10 +236,13 @@ public class DiscordHookSRV extends JavaPlugin {
                 return true;
             }
 
-            String code = args[0];
+            String code =
+                    args[0];
 
             String discordId =
-                    linkManager.getDiscordIdFromCode(code);
+                    linkManager.getDiscordIdFromCode(
+                            code
+                    );
 
             if (discordId == null) {
 
@@ -277,7 +287,9 @@ public class DiscordHookSRV extends JavaPlugin {
                     discordId
             );
 
-            linkManager.removeCode(code);
+            linkManager.removeCode(
+                    code
+            );
 
             player.sendMessage(
                     ChatColor.GREEN
@@ -324,30 +336,39 @@ public class DiscordHookSRV extends JavaPlugin {
         }
 
         int online =
-                Bukkit.getOnlinePlayers().size();
+                Bukkit.getOnlinePlayers()
+                        .size();
 
         int maxPlayers =
                 Bukkit.getMaxPlayers();
 
-        text = text.replace(
-                "%online%",
-                String.valueOf(online)
-        );
+        text =
+                text.replace(
+                        "%online%",
+                        String.valueOf(
+                                online
+                        )
+                );
 
-        text = text.replace(
-                "%max_players%",
-                String.valueOf(maxPlayers)
-        );
+        text =
+                text.replace(
+                        "%max_players%",
+                        String.valueOf(
+                                maxPlayers
+                        )
+                );
 
-        text = text.replace(
-                "%status%",
-                "🟢 Online"
-        );
+        text =
+                text.replace(
+                        "%status%",
+                        "🟢 Online"
+                );
 
-        text = text.replace(
-                "%status_color%",
-                "#00FF00"
-        );
+        text =
+                text.replace(
+                        "%status_color%",
+                        "#00FF00"
+                );
 
         return ChatColor
                 .translateAlternateColorCodes(
@@ -355,4 +376,4 @@ public class DiscordHookSRV extends JavaPlugin {
                         text
                 );
     }
-}
+                        }
