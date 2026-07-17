@@ -1,6 +1,7 @@
-name: Build DiscordHookSRV
+name: Build DiscordHookSrv
 
 on:
+  push:
   workflow_dispatch:
 
 jobs:
@@ -23,8 +24,8 @@ jobs:
       - name: Build
         run: gradle build
 
-      - name: Upload JAR
+      - name: Upload plugin
         uses: actions/upload-artifact@v4
         with:
-          name: DiscordHookSRV
+          name: DiscordHookSrv
           path: build/libs/*.jar
