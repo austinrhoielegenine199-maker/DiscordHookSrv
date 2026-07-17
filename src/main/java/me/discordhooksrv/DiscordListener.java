@@ -24,7 +24,13 @@ public class DiscordListener extends ListenerAdapter {
                         + event.getMessage().getContentRaw()
         );
 
-        if (event.getAuthor().isBot()) {
+        if (
+                plugin.getConfig().getBoolean(
+                        "settings.ignore-bots",
+                        true
+                )
+                        && event.getAuthor().isBot()
+        ) {
             return;
         }
 
@@ -49,6 +55,11 @@ public class DiscordListener extends ListenerAdapter {
                 )
                         && message.equalsIgnoreCase(ipCommand)
         ) {
+
+            plugin.getLogger().info(
+                    "IP command matched! Sending embed..."
+            );
+
             sendEmbed(event, "ip");
             return;
         }
@@ -60,6 +71,11 @@ public class DiscordListener extends ListenerAdapter {
                 )
                         && message.equalsIgnoreCase(onlineCommand)
         ) {
+
+            plugin.getLogger().info(
+                    "ONLINE command matched! Sending embed..."
+            );
+
             sendEmbed(event, "online");
         }
     }
@@ -93,80 +109,3 @@ public class DiscordListener extends ListenerAdapter {
         );
 
         EmbedBuilder embed = new EmbedBuilder();
-
-        if (!title.isEmpty()) {
-            embed.setTitle(title);
-        }
-
-        if (!description.isEmpty()) {
-            embed.setDescription(description);
-        }
-
-        try {
-            embed.setColor(
-                    Color.decode(colorText)
-            );
-        } catch (Exception ignored) {
-            embed.setColor(Color.BLUE);
-        }
-
-        List<Map<?, ?>> fields =
-                plugin.getConfig().getMapList(
-                        path + "fields"
-                );
-
-        for (Map<?, ?> field : fields) {
-
-            Object nameObject = field.get("name");
-            Object valueObject = field.get("value");
-
-            if (
-                    nameObject == null
-                            || valueObject == null
-            ) {
-                continue;
-            }
-
-            String name = plugin.replacePlaceholders(
-                    String.valueOf(nameObject)
-            );
-
-            String value = plugin.replacePlaceholders(
-                    String.valueOf(valueObject)
-            );
-
-            boolean inline = false;
-
-            if (field.containsKey("inline")) {
-                inline = Boolean.parseBoolean(
-                        String.valueOf(
-                                field.get("inline")
-                        )
-                );
-            }
-
-            embed.addField(
-                    name,
-                    value,
-                    inline
-            );
-        }
-
-        String footer = plugin.getConfig().getString(
-                path + "footer",
-                ""
-        );
-
-        if (!footer.isEmpty()) {
-            embed.setFooter(
-                    plugin.replacePlaceholders(footer)
-            );
-        }
-
-        event.getChannel()
-                .sendMessageEmbeds(
-                        embed.build()
-                )
-                .queue();
-    }
-}
