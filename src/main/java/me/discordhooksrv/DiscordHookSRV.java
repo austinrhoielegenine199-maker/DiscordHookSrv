@@ -20,7 +20,21 @@ public class DiscordHookSRV extends JavaPlugin {
 
         saveDefaultConfig();
 
-        startDiscordBot();
+        if (!startDiscordBot()) {
+
+            getLogger().severe(
+                    "DiscordHookSRV failed to start!"
+            );
+
+            getLogger().severe(
+                    "Disabling plugin..."
+            );
+
+            getServer().getPluginManager()
+                    .disablePlugin(this);
+
+            return;
+        }
 
         getLogger().info(
                 "DiscordHookSRV has been enabled!"
@@ -31,7 +45,7 @@ public class DiscordHookSRV extends JavaPlugin {
         );
     }
 
-    private void startDiscordBot() {
+    private boolean startDiscordBot() {
 
         String token = getConfig().getString(
                 "discord.bot-token"
@@ -50,10 +64,10 @@ public class DiscordHookSRV extends JavaPlugin {
             );
 
             getLogger().severe(
-                    "Please add your bot token to config.yml."
+                    "Please add a valid bot token to config.yml."
             );
 
-            return;
+            return false;
         }
 
         try {
@@ -80,13 +94,21 @@ public class DiscordHookSRV extends JavaPlugin {
                     "Discord bot is starting..."
             );
 
+            return true;
+
         } catch (Exception e) {
 
             getLogger().severe(
-                    "Failed to start Discord bot!"
+                    "Invalid Discord bot token or failed to connect!"
+            );
+
+            getLogger().severe(
+                    "The plugin will be disabled."
             );
 
             e.printStackTrace();
+
+            return false;
         }
     }
 
@@ -143,7 +165,12 @@ public class DiscordHookSRV extends JavaPlugin {
     public void onDisable() {
 
         if (jda != null) {
+
             jda.shutdown();
+
+            getLogger().info(
+                    "Discord bot has been shut down."
+            );
         }
 
         getLogger().info(
@@ -179,21 +206,14 @@ public class DiscordHookSRV extends JavaPlugin {
                 String.valueOf(maxPlayers)
         );
 
-        boolean serverOnline =
-                Bukkit.getServer().isPrimaryThread();
-
         text = text.replace(
                 "%status%",
-                serverOnline
-                        ? "🟢 Online"
-                        : "🔴 Offline"
+                "🟢 Online"
         );
 
         text = text.replace(
                 "%status_color%",
-                serverOnline
-                        ? "#00FF00"
-                        : "#FF0000"
+                "#00FF00"
         );
 
         return ChatColor
@@ -202,4 +222,4 @@ public class DiscordHookSRV extends JavaPlugin {
                         text
                 );
     }
-    }
+}
