@@ -1,6 +1,7 @@
 package me.discordhooksrv;
 
 import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 
@@ -17,64 +18,149 @@ public class DiscordListener extends ListenerAdapter {
     }
 
     @Override
-    public void onMessageReceived(MessageReceivedEvent event) {
-
-        plugin.getLogger().info(
-                "Discord message received: "
-                        + event.getMessage().getContentRaw()
-        );
+    public void onSlashCommandInteraction(
+            SlashCommandInteractionEvent event
+    ) {
 
         if (
-                plugin.getConfig().getBoolean(
-                        "settings.ignore-bots",
-                        true
-                )
+                event.getName()
+                        .equalsIgnoreCase("link")
+        ) {
+
+            if (!plugin.getConfig().getBoolean(
+                    "linking.enabled",
+                    true
+            )) {
+
+                event.reply(
+                        "❌ Account linking is disabled."
+                ).setEphemeral(true).queue();
+
+                return;
+            }
+
+            String discordId =
+                    event.getUser().getId();
+
+            if (
+                    plugin.getLinkManager()
+                            .hasDiscordLink(discordId)
+            ) {
+
+                event.reply(
+                        plugin.getConfig()
+                                .getString(
+                                        "linking.messages.discord-already-linked",
+                                        "❌ Your Discord account is already linked."
+                                )
+                ).setEphemeral(true).queue();
+
+                return;
+            }
+
+            String code =
+                    plugin.getLinkManager()
+                            .createCode(discordId);
+
+            String message =
+                    plugin.getConfig()
+                            .getString(
+                                    "linking.messages.discord-code",
+                                    "Your code is `%code%`. Type `/link %code%` in Minecraft."
+                            )
+                            .replace(
+                                    "%code%",
+                                    code
+                            );
+
+            event.reply(message)
+                    .setEphemeral(true)
+                    .queue();
+
+            return;
+        }
+
+        if (
+                event.getName()
+                        .equalsIgnoreCase("unlink")
+        ) {
+
+            event.reply(
+                    "❌ Unlinking is not available yet."
+            ).setEphemeral(true).queue();
+        }
+    }
+
+    @Override
+    public void onMessageReceived(
+            MessageReceivedEvent event
+    ) {
+
+        if (
+                plugin.getConfig()
+                        .getBoolean(
+                                "settings.ignore-bots",
+                                true
+                        )
                         && event.getAuthor().isBot()
         ) {
+
             return;
         }
 
-        String message = event.getMessage()
-                .getContentRaw()
-                .trim();
+        String message =
+                event.getMessage()
+                        .getContentRaw()
+                        .trim();
 
-        String ipCommand = plugin.getConfig().getString(
-                "ip.command",
-                "!ip"
-        );
+        String ipCommand =
+                plugin.getConfig()
+                        .getString(
+                                "ip.command",
+                                "!ip"
+                        );
 
-        String onlineCommand = plugin.getConfig().getString(
-                "online.command",
-                "!online"
-        );
+        String onlineCommand =
+                plugin.getConfig()
+                        .getString(
+                                "online.command",
+                                "!online"
+                        );
 
         if (
-                plugin.getConfig().getBoolean(
-                        "ip.enabled",
-                        true
-                )
-                        && message.equalsIgnoreCase(ipCommand)
+                plugin.getConfig()
+                        .getBoolean(
+                                "ip.enabled",
+                                true
+                        )
+                        && message.equalsIgnoreCase(
+                                ipCommand
+                        )
         ) {
-            plugin.getLogger().info(
-                    "IP command matched! Sending embed..."
+
+            sendEmbed(
+                    event,
+                    "ip"
             );
 
-            sendEmbed(event, "ip");
             return;
         }
 
         if (
-                plugin.getConfig().getBoolean(
-                        "online.enabled",
-                        true
-                )
-                        && message.equalsIgnoreCase(onlineCommand)
+                plugin.getConfig()
+                        .getBoolean(
+                                "online.enabled",
+                                true
+                        )
+                        && message.equalsIgnoreCase(
+                                onlineCommand
+                        )
         ) {
-            plugin.getLogger().info(
-                    "ONLINE command matched! Sending embed..."
-            );
 
-            sendEmbed(event, "online");
+            sendEmbed(
+                    event,
+                    "online"
+            );
         }
     }
 
@@ -83,83 +169,120 @@ public class DiscordListener extends ListenerAdapter {
             String type
     ) {
 
-        String path = type + ".embed.";
+        String path =
+                type + ".embed.";
 
-        String title = plugin.replacePlaceholders(
-                plugin.getConfig().getString(
-                        path + "title",
-                        ""
-                )
-        );
+        String title =
+                plugin.replacePlaceholders(
+                        plugin.getConfig()
+                                .getString(
+                                        path + "title",
+                                        ""
+                                )
+                );
 
-        String description = plugin.replacePlaceholders(
-                plugin.getConfig().getString(
-                        path + "description",
-                        ""
-                )
-        );
+        String description =
+                plugin.replacePlaceholders(
+                        plugin.getConfig()
+                                .getString(
+                                        path + "description",
+                                        ""
+                                )
+                );
 
-        String colorText = plugin.replacePlaceholders(
-                plugin.getConfig().getString(
-                        path + "color",
-                        "#00AAFF"
-                )
-        );
+        String colorText =
+                plugin.replacePlaceholders(
+                        plugin.getConfig()
+                                .getString(
+                                        path + "color",
+                                        "#00AAFF"
+                                )
+                );
 
-        EmbedBuilder embed = new EmbedBuilder();
+        EmbedBuilder embed =
+                new EmbedBuilder();
 
         if (!title.isEmpty()) {
-            embed.setTitle(title);
+
+            embed.setTitle(
+                    title
+            );
         }
 
         if (!description.isEmpty()) {
-            embed.setDescription(description);
+
+            embed.setDescription(
+                    description
+            );
         }
 
         try {
-            embed.setColor(Color.decode(colorText));
-        } catch (Exception error) {
-            plugin.getLogger().warning(
-                    "Invalid embed color: " + colorText
+
+            embed.setColor(
+                    Color.decode(
+                            colorText
+                    )
             );
 
-            embed.setColor(Color.BLUE);
+        } catch (Exception ignored) {
+
+            embed.setColor(
+                    Color.BLUE
+            );
         }
 
         List<Map<?, ?>> fields =
-                plugin.getConfig().getMapList(
-                        path + "fields"
-                );
+                plugin.getConfig()
+                        .getMapList(
+                                path + "fields"
+                        );
 
-        for (Map<?, ?> field : fields) {
+        for (
+                Map<?, ?> field
+                : fields
+        ) {
 
-            Object nameObject = field.get("name");
-            Object valueObject = field.get("value");
+            Object nameObject =
+                    field.get(
+                            "name"
+                    );
+
+            Object valueObject =
+                    field.get(
+                            "value"
+                    );
 
             if (
                     nameObject == null
                             || valueObject == null
             ) {
+
                 continue;
             }
 
-            String name = plugin.replacePlaceholders(
-                    String.valueOf(nameObject)
-            );
+            String name =
+                    plugin.replacePlaceholders(
+                            String.valueOf(
+                                    nameObject
+                            )
+                    );
 
-            String value = plugin.replacePlaceholders(
-                    String.valueOf(valueObject)
-            );
+            String value =
+                    plugin.replacePlaceholders(
+                            String.valueOf(
+                                    valueObject
+                            )
+                    );
 
-            boolean inline = false;
-
-            if (field.containsKey("inline")) {
-                inline = Boolean.parseBoolean(
-                        String.valueOf(
-                                field.get("inline")
-                        )
-                );
-            }
+            boolean inline =
+                    Boolean.parseBoolean(
+                            String.valueOf(
+                                    field.getOrDefault(
+                                            "inline",
+                                            false
+                                    )
+                            )
+                    );
 
             embed.addField(
                     name,
@@ -168,33 +291,26 @@ public class DiscordListener extends ListenerAdapter {
             );
         }
 
-        String footer = plugin.getConfig().getString(
-                path + "footer",
-                ""
-        );
+        String footer =
+                plugin.getConfig()
+                        .getString(
+                                path + "footer",
+                                ""
+                        );
 
         if (!footer.isEmpty()) {
+
             embed.setFooter(
-                    plugin.replacePlaceholders(footer)
+                    plugin.replacePlaceholders(
+                            footer
+                    )
             );
         }
 
-        plugin.getLogger().info(
-                "Attempting to send "
-                        + type
-                        + " embed to Discord..."
-        );
-
         event.getChannel()
-                .sendMessageEmbeds(embed.build())
-                .queue(
-                        success -> plugin.getLogger().info(
-                                "Embed sent successfully!"
-                        ),
-                        error -> plugin.getLogger().severe(
-                                "Failed to send embed: "
-                                        + error.getMessage()
-                        )
-                );
+                .sendMessageEmbeds(
+                        embed.build()
+                )
+                .queue();
     }
-}
+                }
