@@ -3,6 +3,7 @@ package me.discordhooksrv;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Activity;
+import net.dv8tion.jda.api.interactions.commands.build.Commands;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 
 import org.bukkit.Bukkit;
@@ -11,8 +12,6 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
-
-import java.util.UUID;
 
 public class DiscordHookSRV extends JavaPlugin {
 
@@ -96,6 +95,8 @@ public class DiscordHookSRV extends JavaPlugin {
 
                     .build();
 
+            registerSlashCommands();
+
             getLogger().info(
                     "Discord bot is starting..."
             );
@@ -116,6 +117,30 @@ public class DiscordHookSRV extends JavaPlugin {
 
             return false;
         }
+    }
+
+    private void registerSlashCommands() {
+
+        if (jda == null) {
+            return;
+        }
+
+        jda.updateCommands()
+                .addCommands(
+                        Commands.slash(
+                                "link",
+                                "Link your Minecraft account to Discord"
+                        )
+                )
+                .queue(
+                        success -> getLogger().info(
+                                "Discord slash commands registered."
+                        ),
+                        error -> getLogger().severe(
+                                "Failed to register Discord slash commands: "
+                                        + error.getMessage()
+                        )
+                );
     }
 
     @Override
@@ -330,4 +355,4 @@ public class DiscordHookSRV extends JavaPlugin {
                         text
                 );
     }
-                    }
+}
