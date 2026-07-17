@@ -76,8 +76,8 @@ public class DiscordHookSRV extends JavaPlugin {
                 token == null
                         || token.isEmpty()
                         || token.equals(
-                                "PASTE_BOT_TOKEN_HERE"
-                        )
+                        "PASTE_BOT_TOKEN_HERE"
+                )
         ) {
 
             getLogger().severe(
@@ -91,10 +91,10 @@ public class DiscordHookSRV extends JavaPlugin {
 
             jda =
                     JDABuilder.createDefault(
-                            token,
-                            GatewayIntent.GUILD_MESSAGES,
-                            GatewayIntent.MESSAGE_CONTENT
-                    )
+                                    token,
+                                    GatewayIntent.GUILD_MESSAGES,
+                                    GatewayIntent.MESSAGE_CONTENT
+                            )
 
                             .setActivity(
                                     Activity.playing(
