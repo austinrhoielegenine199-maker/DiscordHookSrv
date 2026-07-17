@@ -1,0 +1,15 @@
+name: DiscordHookSRV
+version: 1.0.0
+main: me.discordhooksrv.DiscordHookSRV
+api-version: '1.21'
+
+author: ArchiveAustin
+
+description: Discord bot integration with configurable !ip and !online embeds.
+
+commands:
+  discordhooksrv:
+    description: DiscordHookSRV management command
+    usage: /discordhooksrv reload
+    aliases:
+      - dhs
