@@ -5,55 +5,37 @@ import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.UUID;
 
 public class LinkManager {
 
     private final DiscordHookSRV plugin;
-
     private final File file;
     private final FileConfiguration data;
 
-    private final Map<String, Long> codeCooldowns =
-            new HashMap<>();
-
-    public LinkManager(
-            DiscordHookSRV plugin
-    ) {
+    public LinkManager(DiscordHookSRV plugin) {
 
         this.plugin = plugin;
 
-        file =
-                new File(
-                        plugin.getDataFolder(),
-                        "links.yml"
-                );
+        file = new File(
+                plugin.getDataFolder(),
+                "links.yml"
+        );
 
-        if (
-                !file.exists()
-        ) {
+        if (!file.exists()) {
 
             try {
 
-                file.getParentFile()
-                        .mkdirs();
-
+                file.getParentFile().mkdirs();
                 file.createNewFile();
 
-            } catch (
-                    IOException e
-            ) {
+            } catch (IOException e) {
 
                 e.printStackTrace();
             }
         }
 
-        data =
-                YamlConfiguration.loadConfiguration(
-                        file
-                );
+        data = YamlConfiguration.loadConfiguration(file);
 
         cleanupExpiredCodes();
     }
@@ -64,24 +46,27 @@ public class LinkManager {
 
         cleanupExpiredCodes();
 
+        if (getMinecraftUUID(discordId) != null) {
+            return null;
+        }
+
         int expireSeconds =
-                plugin.getConfig()
-                        .getInt(
-                                "linking.code-expire-seconds",
-                                300
-                        );
+                plugin.getConfig().getInt(
+                        "linking.code-expire-seconds",
+                        300
+                );
 
         String code;
 
         do {
 
-            code =
-                    String.valueOf(
-                            100000
-                                    + (int)
-                                    (Math.random()
-                                            * 900000)
-                    );
+            code = String.valueOf(
+                    100000
+                            + (int) (
+                            Math.random()
+                                    * 900000
+                    )
+            );
 
         } while (
                 data.contains(
@@ -102,7 +87,10 @@ public class LinkManager {
                         + code
                         + ".expires",
                 System.currentTimeMillis()
-                        + (expireSeconds * 1000L)
+                        + (
+                        expireSeconds
+                                * 1000L
+                )
         );
 
         save();
@@ -120,12 +108,7 @@ public class LinkManager {
                 "codes."
                         + code;
 
-        if (
-                !data.contains(
-                        path
-                )
-        ) {
-
+        if (!data.contains(path)) {
             return null;
         }
 
@@ -183,43 +166,7 @@ public class LinkManager {
             String discordId
     ) {
 
-        if (
-                !data.contains(
-                        "links"
-                )
-        ) {
-
-            return false;
-        }
-
-        for (
-                String key
-                : data.getConfigurationSection(
-                        "links"
-                )
-                .getKeys(
-                        false
-                )
-        ) {
-
-            String linkedDiscord =
-                    data.getString(
-                            "links."
-                                    + key
-                                    + ".discord"
-                    );
-
-            if (
-                    discordId.equals(
-                            linkedDiscord
-                    )
-            ) {
-
-                return true;
-            }
-        }
-
-        return false;
+        return getMinecraftUUID(discordId) != null;
     }
 
     public synchronized void link(
@@ -261,14 +208,20 @@ public class LinkManager {
             return null;
         }
 
+        if (
+                data.getConfigurationSection(
+                        "links"
+                ) == null
+        ) {
+
+            return null;
+        }
+
         for (
                 String key
                 : data.getConfigurationSection(
                         "links"
-                )
-                .getKeys(
-                        false
-                )
+                ).getKeys(false)
         ) {
 
             String linkedDiscord =
@@ -313,9 +266,18 @@ public class LinkManager {
         );
     }
 
-    public synchronized void unlink(
+    public synchronized String unlink(
             UUID minecraftUUID
     ) {
+
+        String discordId =
+                getDiscordId(
+                        minecraftUUID
+                );
+
+        if (discordId == null) {
+            return null;
+        }
 
         data.set(
                 "links."
@@ -324,6 +286,8 @@ public class LinkManager {
         );
 
         save();
+
+        return discordId;
     }
 
     private void cleanupExpiredCodes() {
@@ -337,17 +301,22 @@ public class LinkManager {
             return;
         }
 
-        boolean changed =
-                false;
+        if (
+                data.getConfigurationSection(
+                        "codes"
+                ) == null
+        ) {
+
+            return;
+        }
+
+        boolean changed = false;
 
         for (
                 String code
                 : data.getConfigurationSection(
                         "codes"
-                )
-                .getKeys(
-                        false
-                )
+                ).getKeys(false)
         ) {
 
             long expires =
@@ -368,15 +337,11 @@ public class LinkManager {
                         null
                 );
 
-                changed =
-                        true;
+                changed = true;
             }
         }
 
-        if (
-                changed
-        ) {
-
+        if (changed) {
             save();
         }
     }
@@ -385,15 +350,11 @@ public class LinkManager {
 
         try {
 
-            data.save(
-                    file
-            );
+            data.save(file);
 
-        } catch (
-                IOException e
-        ) {
+        } catch (IOException e) {
 
             e.printStackTrace();
         }
     }
-            }
+}
