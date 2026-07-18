@@ -1,32 +1,29 @@
 package me.discordhooksrv;
 
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ThreadLocalRandom;
 
 public class LinkManager {
 
     private final DiscordHookSRV plugin;
 
     private final File file;
+    private final FileConfiguration data;
 
-    private final YamlConfiguration data;
-
-    private final Map<String, String> codes =
+    private final Map<String, Long> codeCooldowns =
             new HashMap<>();
 
     public LinkManager(
             DiscordHookSRV plugin
     ) {
 
-        this.plugin =
-                plugin;
+        this.plugin = plugin;
 
         file =
                 new File(
@@ -54,71 +51,25 @@ public class LinkManager {
         }
 
         data =
-                YamlConfiguration
-                        .loadConfiguration(
-                                file
-                        );
-
-        loadCodes();
+                YamlConfiguration.loadConfiguration(
+                        file
+                );
 
         cleanupExpiredCodes();
     }
 
-    private void loadCodes() {
-
-        if (
-                data.getConfigurationSection(
-                        "codes"
-                )
-                        == null
-        ) {
-
-            return;
-        }
-
-        for (
-                String code
-                : data.getConfigurationSection(
-                        "codes"
-                )
-                .getKeys(
-                        false
-                )
-        ) {
-
-            String discordId =
-                    data.getString(
-                            "codes."
-                                    + code
-                                    + ".discord"
-                    );
-
-            if (
-                    discordId != null
-            ) {
-
-                codes.put(
-                        code,
-                        discordId
-                );
-            }
-        }
-    }
-
-    public String createCode(
+    public synchronized String createCode(
             String discordId
     ) {
 
-        if (
-                hasDiscordLink(
-                        discordId
-                )
-        ) {
-
-            return null;
-        }
-
         cleanupExpiredCodes();
+
+        int expireSeconds =
+                plugin.getConfig()
+                        .getInt(
+                                "linking.code-expire-seconds",
+                                300
+                        );
 
         String code;
 
@@ -126,23 +77,17 @@ public class LinkManager {
 
             code =
                     String.valueOf(
-                            ThreadLocalRandom
-                                    .current()
-                                    .nextInt(
-                                            100000,
-                                            1000000
-                                    )
+                            100000
+                                    + (int)
+                                    (Math.random()
+                                            * 900000)
                     );
 
         } while (
-                codes.containsKey(
-                        code
+                data.contains(
+                        "codes."
+                                + code
                 )
-        );
-
-        codes.put(
-                code,
-                discordId
         );
 
         data.set(
@@ -155,8 +100,9 @@ public class LinkManager {
         data.set(
                 "codes."
                         + code
-                        + ".created",
+                        + ".expires",
                 System.currentTimeMillis()
+                        + (expireSeconds * 1000L)
         );
 
         save();
@@ -164,44 +110,90 @@ public class LinkManager {
         return code;
     }
 
-    public String getDiscordIdFromCode(
+    public synchronized String getDiscordIdFromCode(
             String code
     ) {
 
         cleanupExpiredCodes();
 
-        return codes.get(
-                code
+        String path =
+                "codes."
+                        + code;
+
+        if (
+                !data.contains(
+                        path
+                )
+        ) {
+
+            return null;
+        }
+
+        long expires =
+                data.getLong(
+                        path
+                                + ".expires"
+                );
+
+        if (
+                System.currentTimeMillis()
+                        > expires
+        ) {
+
+            data.set(
+                    path,
+                    null
+            );
+
+            save();
+
+            return null;
+        }
+
+        return data.getString(
+                path
+                        + ".discord"
         );
     }
 
-    public boolean hasMinecraftLink(
+    public synchronized void removeCode(
+            String code
+    ) {
+
+        data.set(
+                "codes."
+                        + code,
+                null
+        );
+
+        save();
+    }
+
+    public synchronized boolean hasMinecraftLink(
             UUID minecraftUUID
     ) {
 
         return data.contains(
                 "links."
                         + minecraftUUID
-                        + ".discord"
         );
     }
 
-    public boolean hasDiscordLink(
+    public synchronized boolean hasDiscordLink(
             String discordId
     ) {
 
         if (
-                data.getConfigurationSection(
+                !data.contains(
                         "links"
                 )
-                        == null
         ) {
 
             return false;
         }
 
         for (
-                String uuid
+                String key
                 : data.getConfigurationSection(
                         "links"
                 )
@@ -213,7 +205,7 @@ public class LinkManager {
             String linkedDiscord =
                     data.getString(
                             "links."
-                                    + uuid
+                                    + key
                                     + ".discord"
                     );
 
@@ -230,62 +222,7 @@ public class LinkManager {
         return false;
     }
 
-    public UUID getMinecraftUUID(
-            String discordId
-    ) {
-
-        if (
-                data.getConfigurationSection(
-                        "links"
-                )
-                        == null
-        ) {
-
-            return null;
-        }
-
-        for (
-                String uuidString
-                : data.getConfigurationSection(
-                        "links"
-                )
-                .getKeys(
-                        false
-                )
-        ) {
-
-            String linkedDiscord =
-                    data.getString(
-                            "links."
-                                    + uuidString
-                                    + ".discord"
-                    );
-
-            if (
-                    discordId.equals(
-                            linkedDiscord
-                    )
-            ) {
-
-                try {
-
-                    return UUID.fromString(
-                            uuidString
-                    );
-
-                } catch (
-                        IllegalArgumentException ignored
-                ) {
-
-                    return null;
-                }
-            }
-        }
-
-        return null;
-    }
-
-    public void link(
+    public synchronized void link(
             UUID minecraftUUID,
             String discordId
     ) {
@@ -300,23 +237,85 @@ public class LinkManager {
         data.set(
                 "links."
                         + minecraftUUID
-                        + ".linked-at",
-                System.currentTimeMillis()
+                        + ".username",
+                plugin.getServer()
+                        .getOfflinePlayer(
+                                minecraftUUID
+                        )
+                        .getName()
         );
 
         save();
     }
 
-    public String unlink(
+    public synchronized UUID getMinecraftUUID(
+            String discordId
+    ) {
+
+        if (
+                !data.contains(
+                        "links"
+                )
+        ) {
+
+            return null;
+        }
+
+        for (
+                String key
+                : data.getConfigurationSection(
+                        "links"
+                )
+                .getKeys(
+                        false
+                )
+        ) {
+
+            String linkedDiscord =
+                    data.getString(
+                            "links."
+                                    + key
+                                    + ".discord"
+                    );
+
+            if (
+                    discordId.equals(
+                            linkedDiscord
+                    )
+            ) {
+
+                try {
+
+                    return UUID.fromString(
+                            key
+                    );
+
+                } catch (
+                        IllegalArgumentException ignored
+                ) {
+
+                    return null;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    public synchronized String getDiscordId(
             UUID minecraftUUID
     ) {
 
-        String discordId =
-                data.getString(
-                        "links."
-                                + minecraftUUID
-                                + ".discord"
-                );
+        return data.getString(
+                "links."
+                        + minecraftUUID
+                        + ".discord"
+        );
+    }
+
+    public synchronized void unlink(
+            UUID minecraftUUID
+    ) {
 
         data.set(
                 "links."
@@ -325,88 +324,57 @@ public class LinkManager {
         );
 
         save();
-
-        return discordId;
-    }
-
-    public void removeCode(
-            String code
-    ) {
-
-        codes.remove(
-                code
-        );
-
-        data.set(
-                "codes."
-                        + code,
-                null
-        );
-
-        save();
     }
 
     private void cleanupExpiredCodes() {
 
-        long expiry =
-                plugin.getConfig()
-                        .getLong(
-                                "linking.code-expire-seconds",
-                                300
-                        )
-                        * 1000L;
-
-        long now =
-                System.currentTimeMillis();
-
-        HashSet<String> expired =
-                new HashSet<>();
-
-        for (
-                Map.Entry<
-                        String,
-                        String
-                        >
-                        entry
-                : codes.entrySet()
+        if (
+                !data.contains(
+                        "codes"
+                )
         ) {
 
-            long created =
-                    data.getLong(
-                            "codes."
-                                    + entry.getKey()
-                                    + ".created"
-                    );
-
-            if (
-                    now - created
-                            >= expiry
-            ) {
-
-                expired.add(
-                        entry.getKey()
-                );
-            }
+            return;
         }
+
+        boolean changed =
+                false;
 
         for (
                 String code
-                : expired
+                : data.getConfigurationSection(
+                        "codes"
+                )
+                .getKeys(
+                        false
+                )
         ) {
 
-            codes.remove(
-                    code
-            );
+            long expires =
+                    data.getLong(
+                            "codes."
+                                    + code
+                                    + ".expires"
+                    );
 
-            data.set(
-                    "codes."
-                            + code,
-                    null
-            );
+            if (
+                    System.currentTimeMillis()
+                            > expires
+            ) {
+
+                data.set(
+                        "codes."
+                                + code,
+                        null
+                );
+
+                changed =
+                        true;
+            }
         }
 
         if (
-                !expired.isEmpty()
+                changed
         ) {
 
             save();
@@ -428,4 +396,4 @@ public class LinkManager {
             e.printStackTrace();
         }
     }
-}
+            }
