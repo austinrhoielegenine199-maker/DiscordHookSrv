@@ -79,6 +79,10 @@ online:
         value: "%status%"
         inline: true
 
+      - name: "Players"
+        value: "%player_list%"
+        inline: false
+
     footer: "Made By ArchiveAustin"
 
 
@@ -119,7 +123,7 @@ linking:
   enabled: true
 
   # Linking code expiration time in seconds.
-  code-expiry-seconds: 300
+  code-expire-seconds: 300
 
   # Maximum wrong attempts before the code is locked.
   max-attempts: 5
@@ -151,7 +155,7 @@ linking:
 
       This code expires in 5 minutes.
 
-    discord-already-linked: "❌ Your Discord account is already linked to a Minecraft account."
+    discord-already-linked: "❌ Your Discord account is already linked."
 
     minecraft-success: "&a&l✓ &aYour Minecraft account has been linked to Discord!"
 
