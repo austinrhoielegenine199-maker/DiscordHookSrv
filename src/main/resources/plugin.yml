@@ -18,3 +18,7 @@ commands:
   link:
     description: Link your Minecraft account to Discord
     usage: /link <code>
+    permissions:
+  discordhooksrv.link:
+    description: Allows players to link their Minecraft account to Discord
+    default: true
