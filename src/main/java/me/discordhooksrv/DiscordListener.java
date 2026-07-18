@@ -17,8 +17,12 @@ public class DiscordListener extends ListenerAdapter {
 
     private final DiscordHookSRV plugin;
 
-    public DiscordListener(DiscordHookSRV plugin) {
-        this.plugin = plugin;
+    public DiscordListener(
+            DiscordHookSRV plugin
+    ) {
+
+        this.plugin =
+                plugin;
     }
 
     @Override
@@ -26,13 +30,30 @@ public class DiscordListener extends ListenerAdapter {
             SlashCommandInteractionEvent event
     ) {
 
-        if (event.getName().equalsIgnoreCase("link")) {
-            handleLink(event);
+        if (
+                event.getName()
+                        .equalsIgnoreCase(
+                                "link"
+                        )
+        ) {
+
+            handleLink(
+                    event
+            );
+
             return;
         }
 
-        if (event.getName().equalsIgnoreCase("unlink")) {
-            handleUnlink(event);
+        if (
+                event.getName()
+                        .equalsIgnoreCase(
+                                "unlink"
+                        )
+        ) {
+
+            handleUnlink(
+                    event
+            );
         }
     }
 
@@ -40,22 +61,28 @@ public class DiscordListener extends ListenerAdapter {
             SlashCommandInteractionEvent event
     ) {
 
-        if (!plugin.getConfig().getBoolean(
-                "linking.enabled",
-                true
-        )) {
+        if (
+                !plugin.getConfig()
+                        .getBoolean(
+                                "linking.enabled",
+                                true
+                        )
+        ) {
 
             event.reply(
-                    "❌ Account linking is disabled."
-            )
-                    .setEphemeral(true)
+                            "❌ Account linking is disabled."
+                    )
+                    .setEphemeral(
+                            true
+                    )
                     .queue();
 
             return;
         }
 
         String discordId =
-                event.getUser().getId();
+                event.getUser()
+                        .getId();
 
         LinkManager linkManager =
                 plugin.getLinkManager();
@@ -67,12 +94,15 @@ public class DiscordListener extends ListenerAdapter {
         ) {
 
             event.reply(
-                    plugin.getConfig().getString(
-                            "linking.messages.discord-already-linked",
-                            "❌ Your Discord account is already linked."
+                            plugin.getConfig()
+                                    .getString(
+                                            "linking.messages.discord-already-linked",
+                                            "❌ Your Discord account is already linked."
+                                    )
                     )
-            )
-                    .setEphemeral(true)
+                    .setEphemeral(
+                            true
+                    )
                     .queue();
 
             return;
@@ -83,31 +113,38 @@ public class DiscordListener extends ListenerAdapter {
                         discordId
                 );
 
-        if (code == null) {
+        if (
+                code == null
+        ) {
 
             event.reply(
-                    "❌ Your Discord account is already linked."
-            )
-                    .setEphemeral(true)
+                            "❌ Your Discord account is already linked."
+                    )
+                    .setEphemeral(
+                            true
+                    )
                     .queue();
 
             return;
         }
 
         String message =
-                plugin.getConfig().getString(
-                        "linking.messages.discord-code",
-                        "Your code is `%code%`. Type `/link %code%` in Minecraft."
-                );
+                plugin.getConfig()
+                        .getString(
+                                "linking.messages.discord-code",
+                                "Your code is `%code%`. Type `/link %code%` in Minecraft."
+                        )
+                        .replace(
+                                "%code%",
+                                code
+                        );
 
-        message =
-                message.replace(
-                        "%code%",
-                        code
-                );
-
-        event.reply(message)
-                .setEphemeral(true)
+        event.reply(
+                        message
+                )
+                .setEphemeral(
+                        true
+                )
                 .queue();
     }
 
@@ -116,7 +153,8 @@ public class DiscordListener extends ListenerAdapter {
     ) {
 
         String discordId =
-                event.getUser().getId();
+                event.getUser()
+                        .getId();
 
         LinkManager linkManager =
                 plugin.getLinkManager();
@@ -126,12 +164,16 @@ public class DiscordListener extends ListenerAdapter {
                         discordId
                 );
 
-        if (minecraftUUID == null) {
+        if (
+                minecraftUUID == null
+        ) {
 
             event.reply(
-                    "❌ Your Discord account is not linked."
-            )
-                    .setEphemeral(true)
+                            "❌ Your Discord account is not linked."
+                    )
+                    .setEphemeral(
+                            true
+                    )
                     .queue();
 
             return;
@@ -142,12 +184,16 @@ public class DiscordListener extends ListenerAdapter {
                         minecraftUUID
                 );
 
-        if (removedDiscordId == null) {
+        if (
+                removedDiscordId == null
+        ) {
 
             event.reply(
-                    "❌ Failed to unlink your account."
-            )
-                    .setEphemeral(true)
+                            "❌ Failed to unlink your account."
+                    )
+                    .setEphemeral(
+                            true
+                    )
                     .queue();
 
             return;
@@ -159,9 +205,11 @@ public class DiscordListener extends ListenerAdapter {
         );
 
         event.reply(
-                "✅ Your Minecraft account has been unlinked from Discord."
-        )
-                .setEphemeral(true)
+                        "✅ Your Minecraft account has been unlinked from Discord."
+                )
+                .setEphemeral(
+                        true
+                )
                 .queue();
     }
 
@@ -171,10 +219,11 @@ public class DiscordListener extends ListenerAdapter {
     ) {
 
         String roleId =
-                plugin.getConfig().getString(
-                        "linking.verified-role-id",
-                        ""
-                );
+                plugin.getConfig()
+                        .getString(
+                                "linking.verified-role-id",
+                                ""
+                        );
 
         if (
                 roleId.isEmpty()
@@ -188,7 +237,8 @@ public class DiscordListener extends ListenerAdapter {
 
         for (
                 Guild guild
-                : event.getJDA().getGuilds()
+                : event.getJDA()
+                        .getGuilds()
         ) {
 
             Member member =
@@ -196,7 +246,10 @@ public class DiscordListener extends ListenerAdapter {
                             discordId
                     );
 
-            if (member == null) {
+            if (
+                    member == null
+            ) {
+
                 continue;
             }
 
@@ -205,14 +258,17 @@ public class DiscordListener extends ListenerAdapter {
                             roleId
                     );
 
-            if (role == null) {
+            if (
+                    role == null
+            ) {
+
                 continue;
             }
 
             guild.removeRoleFromMember(
-                    member,
-                    role
-            )
+                            member,
+                            role
+                    )
                     .queue();
         }
     }
@@ -223,11 +279,13 @@ public class DiscordListener extends ListenerAdapter {
     ) {
 
         if (
-                plugin.getConfig().getBoolean(
-                        "settings.ignore-bots",
-                        true
-                )
-                        && event.getAuthor().isBot()
+                plugin.getConfig()
+                        .getBoolean(
+                                "settings.ignore-bots",
+                                true
+                        )
+                        && event.getAuthor()
+                        .isBot()
         ) {
 
             return;
@@ -239,22 +297,25 @@ public class DiscordListener extends ListenerAdapter {
                         .trim();
 
         String ipCommand =
-                plugin.getConfig().getString(
-                        "ip.command",
-                        "!ip"
-                );
+                plugin.getConfig()
+                        .getString(
+                                "ip.command",
+                                "!ip"
+                        );
 
         String onlineCommand =
-                plugin.getConfig().getString(
-                        "online.command",
-                        "!online"
-                );
+                plugin.getConfig()
+                        .getString(
+                                "online.command",
+                                "!online"
+                        );
 
         if (
-                plugin.getConfig().getBoolean(
-                        "ip.enabled",
-                        true
-                )
+                plugin.getConfig()
+                        .getBoolean(
+                                "ip.enabled",
+                                true
+                        )
                         && message.equalsIgnoreCase(
                         ipCommand
                 )
@@ -269,10 +330,11 @@ public class DiscordListener extends ListenerAdapter {
         }
 
         if (
-                plugin.getConfig().getBoolean(
-                        "online.enabled",
-                        true
-                )
+                plugin.getConfig()
+                        .getBoolean(
+                                "online.enabled",
+                                true
+                        )
                         && message.equalsIgnoreCase(
                         onlineCommand
                 )
@@ -291,43 +353,54 @@ public class DiscordListener extends ListenerAdapter {
     ) {
 
         String path =
-                type + ".embed.";
+                type
+                        + ".embed.";
 
         String title =
                 plugin.replacePlaceholders(
-                        plugin.getConfig().getString(
-                                path + "title",
-                                ""
-                        )
+                        plugin.getConfig()
+                                .getString(
+                                        path
+                                                + "title",
+                                        ""
+                                )
                 );
 
         String description =
                 plugin.replacePlaceholders(
-                        plugin.getConfig().getString(
-                                path + "description",
-                                ""
-                        )
+                        plugin.getConfig()
+                                .getString(
+                                        path
+                                                + "description",
+                                        ""
+                                )
                 );
 
         String colorText =
                 plugin.replacePlaceholders(
-                        plugin.getConfig().getString(
-                                path + "color",
-                                "#00AAFF"
-                        )
+                        plugin.getConfig()
+                                .getString(
+                                        path
+                                                + "color",
+                                        "#00AAFF"
+                                )
                 );
 
         EmbedBuilder embed =
                 new EmbedBuilder();
 
-        if (!title.isEmpty()) {
+        if (
+                !title.isEmpty()
+        ) {
 
             embed.setTitle(
                     title
             );
         }
 
-        if (!description.isEmpty()) {
+        if (
+                !description.isEmpty()
+        ) {
 
             embed.setDescription(
                     description
@@ -342,7 +415,9 @@ public class DiscordListener extends ListenerAdapter {
                     )
             );
 
-        } catch (Exception ignored) {
+        } catch (
+                Exception ignored
+        ) {
 
             embed.setColor(
                     Color.BLUE
@@ -350,9 +425,11 @@ public class DiscordListener extends ListenerAdapter {
         }
 
         List<Map<?, ?>> fields =
-                plugin.getConfig().getMapList(
-                        path + "fields"
-                );
+                plugin.getConfig()
+                        .getMapList(
+                                path
+                                        + "fields"
+                        );
 
         for (
                 Map<?, ?> field
@@ -419,12 +496,16 @@ public class DiscordListener extends ListenerAdapter {
         }
 
         String footer =
-                plugin.getConfig().getString(
-                        path + "footer",
-                        ""
-                );
+                plugin.getConfig()
+                        .getString(
+                                path
+                                        + "footer",
+                                ""
+                        );
 
-        if (!footer.isEmpty()) {
+        if (
+                !footer.isEmpty()
+        ) {
 
             embed.setFooter(
                     plugin.replacePlaceholders(
