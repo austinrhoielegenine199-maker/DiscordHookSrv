@@ -8,17 +8,22 @@ author: ArchiveAustin
 description: Discord bot integration with account linking, permanent link storage, configurable !ip and !online embeds, and automatic updates.
 
 commands:
-
-  discordhooksrv:
-    description: DiscordHookSRV management command
-    usage: /discordhooksrv reload
-    aliases:
-      - dhs
-
   link:
     description: Link your Minecraft account to Discord
     usage: /link <code>
-    permissions:
+    permission: discordhooksrv.link
+    permission-message: ""
+
+  discordhooksrv:
+    description: DiscordHookSRV admin command
+    usage: /dhs reload
+    permission: discordhooksrv.admin
+
+permissions:
   discordhooksrv.link:
-    description: Allows players to link their Minecraft account to Discord
+    description: Allows players to use /link
     default: true
+
+  discordhooksrv.admin:
+    description: Allows admin DiscordHookSRV commands
+    default: op
