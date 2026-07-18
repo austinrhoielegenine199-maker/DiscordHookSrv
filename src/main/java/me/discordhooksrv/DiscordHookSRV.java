@@ -3,6 +3,9 @@ package me.discordhooksrv;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Activity;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.interactions.commands.build.Commands;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 
@@ -39,11 +42,15 @@ public class DiscordHookSRV extends JavaPlugin {
         saveDefaultConfig();
 
         linkManager =
-                new LinkManager(this);
+                new LinkManager(
+                        this
+                );
 
         checkForUpdates();
 
-        if (!startDiscordBot()) {
+        if (
+                !startDiscordBot()
+        ) {
 
             getLogger().severe(
                     "DiscordHookSRV failed to start!"
@@ -51,7 +58,9 @@ public class DiscordHookSRV extends JavaPlugin {
 
             getServer()
                     .getPluginManager()
-                    .disablePlugin(this);
+                    .disablePlugin(
+                            this
+                    );
 
             return;
         }
@@ -103,7 +112,9 @@ public class DiscordHookSRV extends JavaPlugin {
                             )
 
                             .addEventListeners(
-                                    new DiscordListener(this)
+                                    new DiscordListener(
+                                            this
+                                    )
                             )
 
                             .build();
@@ -116,7 +127,9 @@ public class DiscordHookSRV extends JavaPlugin {
 
             return true;
 
-        } catch (Exception e) {
+        } catch (
+                Exception e
+        ) {
 
             getLogger().severe(
                     "Invalid Discord bot token or failed to connect!"
@@ -130,7 +143,10 @@ public class DiscordHookSRV extends JavaPlugin {
 
     private void registerSlashCommands() {
 
-        if (jda == null) {
+        if (
+                jda == null
+        ) {
+
             return;
         }
 
@@ -211,7 +227,9 @@ public class DiscordHookSRV extends JavaPlugin {
                         )
         ) {
 
-            if (!(sender instanceof Player player)) {
+            if (
+                    !(sender instanceof Player player)
+            ) {
 
                 sender.sendMessage(
                         ChatColor.RED
@@ -236,7 +254,9 @@ public class DiscordHookSRV extends JavaPlugin {
                 return true;
             }
 
-            if (args.length != 1) {
+            if (
+                    args.length != 1
+            ) {
 
                 player.sendMessage(
                         ChatColor.YELLOW
@@ -303,6 +323,11 @@ public class DiscordHookSRV extends JavaPlugin {
                     code
             );
 
+            updateDiscordMember(
+                    discordId,
+                    player.getName()
+            );
+
             player.sendMessage(
                     ChatColor.GREEN
                             + "✓ Your Minecraft account has been linked to Discord!"
@@ -312,6 +337,109 @@ public class DiscordHookSRV extends JavaPlugin {
         }
 
         return false;
+    }
+
+    private void updateDiscordMember(
+            String discordId,
+            String minecraftName
+    ) {
+
+        if (
+                jda == null
+        ) {
+
+            return;
+        }
+
+        String roleId =
+                getConfig().getString(
+                        "linking.verified-role-id",
+                        ""
+                );
+
+        boolean changeNickname =
+                getConfig().getBoolean(
+                        "linking.force-minecraft-nickname",
+                        true
+                );
+
+        for (
+                Guild guild
+                : jda.getGuilds()
+        ) {
+
+            Member member =
+                    guild.getMemberById(
+                            discordId
+                    );
+
+            if (
+                    member == null
+            ) {
+
+                continue;
+            }
+
+            if (
+                    changeNickname
+            ) {
+
+                member.modifyNickname(
+                                minecraftName
+                        )
+                        .queue(
+
+                                success ->
+                                        getLogger().info(
+                                                "Changed Discord nickname for "
+                                                        + discordId
+                                        ),
+
+                                error ->
+                                        getLogger().warning(
+                                                "Could not change Discord nickname: "
+                                                        + error.getMessage()
+                                        )
+                        );
+            }
+
+            if (
+                    !roleId.isEmpty()
+                            && !roleId.equals(
+                            "PASTE_VERIFIED_ROLE_ID_HERE"
+                    )
+            ) {
+
+                Role role =
+                        guild.getRoleById(
+                                roleId
+                        );
+
+                if (
+                        role != null
+                ) {
+
+                    guild.addRoleToMember(
+                                    member,
+                                    role
+                            )
+                            .queue(
+
+                                    success ->
+                                            getLogger().info(
+                                                    "Added verified role to "
+                                                            + discordId
+                                            ),
+
+                                    error ->
+                                            getLogger().warning(
+                                                    "Could not add verified role: "
+                                                            + error.getMessage()
+                                            )
+                            );
+                }
+            }
+        }
     }
 
     private void checkForUpdates() {
@@ -726,4 +854,4 @@ public class DiscordHookSRV extends JavaPlugin {
                         text
                 );
     }
-                }
+            }
